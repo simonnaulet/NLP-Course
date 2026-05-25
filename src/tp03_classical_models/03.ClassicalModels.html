@@ -35,7 +35,7 @@
 .reveal h3 { font-size: 0.82em; font-weight: 600; color: var(--mint); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.3em; }
 .reveal pre { font-size: 0.62em !important; background: #010409; border: 1px solid var(--border); border-radius: 6px; margin: 0.4em 0; }
 .reveal code { font-family: 'DM Mono', monospace; font-size: 0.88em; color: var(--mint); background: transparent; }
-.reveal section { text-align: left; padding: 0.3em 1em; box-sizing: border-box; }
+.reveal section { text-align: left; padding: 0.3em 1em 0 1em; box-sizing: border-box; }
 .reveal .slides { height: 100%; }
 .reveal p { font-size: 0.78em; line-height: 1.55; margin: 0.3em 0; }
 .reveal ul { font-size: 0.78em; line-height: 1.6; margin: 0.3em 0 0.3em 1em; }
@@ -1349,7 +1349,40 @@ Reveal.initialize({
   width: 1100,
   height: 700,
   margin: 0.04,
+  minScale: 0.1,
+  maxScale: 2.0,
   plugins: [RevealHighlight, RevealNotes],
+});
+
+// Auto-shrink slide content that overflows the slide height.
+// Uses CSS zoom (not transform) so it doesn't conflict with Reveal's own
+// transform:scale() applied to the .slides viewport.
+function fitSlide(slide) {
+  if (!slide) return;
+
+  // Reset previous fit
+  slide.style.zoom = '';
+
+  // One rAF to let the browser reflow at zoom=1 before measuring
+  requestAnimationFrame(function () {
+    const slideH = 700; // must match Reveal height config
+    const contentH = slide.scrollHeight;
+    if (contentH > slideH) {
+      const ratio = Math.max(0.42, (slideH - 6) / contentH);
+      slide.style.zoom = ratio;
+    }
+  });
+}
+
+Reveal.on('ready', function () {
+  document.querySelectorAll('.reveal .slides section').forEach(function (s) {
+    // Only target leaf slides (not vertical stack parents)
+    if (!s.querySelector('section')) fitSlide(s);
+  });
+});
+
+Reveal.on('slidechanged', function (e) {
+  fitSlide(e.currentSlide);
 });
 </script>
 </body>

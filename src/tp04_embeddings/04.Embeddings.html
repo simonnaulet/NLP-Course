@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NLP — Session 04: Word Embeddings</title>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+
+<!-- Reveal.js -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/monokai.min.css"/>
+
+<style>
+/* ── Palette ──────────────────────────────────────────────────────── */
+:root {
+  --bg:        #0d1117;
+  --surface:   #161b22;
+  --border:    #30363d;
+  --mint:      #56c8ba;
+  --mint-dim:  #1e4a45;
+  --navy:      #4a6fc8;
+  --navy-dim:  #1a2740;
+  --gold:      #e8c47a;
+  --gold-dim:  #3d2e0f;
+  --text:      #e6edf3;
+  --text-dim:  #8b949e;
+  --red:       #f47067;
+  --red-dim:   #3d1212;
+  --green:     #7ee787;
+  --green-dim: #122d1a;
+  --purple:    #c084fc;
+  --purple-dim:#2d1a40;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+.reveal-viewport { background: var(--bg); }
+.reveal {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 34px;
+  color: var(--text);
+}
+.reveal h1, .reveal h2, .reveal h3 {
+  font-family: 'DM Serif Display', serif;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin-bottom: 0.4em;
+}
+.reveal h1 { font-size: 1.9em; line-height: 1.1; }
+.reveal h2 { font-size: 1.25em; color: var(--mint); }
+.reveal h3 { font-size: 0.95em; color: var(--gold); font-style: italic; }
+.reveal p  { font-weight: 300; line-height: 1.5; margin: 0.3em 0; }
+.reveal li { font-weight: 300; line-height: 1.5; margin: 0.2em 0; }
+.reveal strong { font-weight: 500; color: var(--mint); }
+.reveal em     { color: var(--gold); font-style: italic; }
+.reveal code {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.76em;
+  background: var(--surface);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  color: var(--mint);
+}
+.reveal pre {
+  margin: 0.5em auto;
+  box-shadow: none;
+  width: 100%;
+}
+.reveal pre code {
+  font-size: 0.68em;
+  border-radius: 8px;
+  padding: 0.9em 1.1em;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  max-height: 380px;
+  overflow: auto;
+}
+.reveal ul { list-style: none; padding: 0; margin: 0.3em 0; }
+.reveal ul li::before { content: "›"; color: var(--mint); margin-right: 0.4em; font-weight: 500; }
+.reveal ul ul li::before { content: "·"; color: var(--text-dim); }
+.reveal a { color: var(--mint); text-decoration: none; border-bottom: 1px solid var(--mint-dim); }
+.reveal .slide-number { color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 0.5em; }
+.reveal .progress { color: var(--mint); height: 3px; }
+
+/* ── Section dividers ─────────────────────────────────────────────── */
+.section-slide { background: var(--navy-dim) !important; }
+.section-slide h2 { font-size: 1.9em; color: var(--text); }
+.section-num {
+  display: block;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.45em;
+  color: var(--mint);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 0.6em;
+}
+
+/* ── Layout ───────────────────────────────────────────────────────── */
+.cols { display: grid; gap: 1.2em; }
+.cols-2    { grid-template-columns: 1fr 1fr; }
+.cols-3    { grid-template-columns: 1fr 1fr 1fr; }
+.cols-6040 { grid-template-columns: 60fr 40fr; }
+.cols-4060 { grid-template-columns: 40fr 60fr; }
+
+/* ── Cards ────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65em 0.9em;
+  font-size: 0.76em;
+}
+.card-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 0.4em;
+}
+.card.gold   { border-color: var(--gold-dim);   background: #1a160a; }
+.card.navy   { border-color: var(--navy-dim);   background: #0e1420; }
+.card.red    { border-color: var(--red-dim);    background: #1a0d0d; }
+.card.green  { border-color: var(--green-dim);  background: #0d1a0f; }
+.card.purple { border-color: var(--purple-dim); background: #180d2a; }
+.card.mint   { border-color: var(--mint-dim);   background: #0d1e1c; }
+
+/* ── Highlight box ────────────────────────────────────────────────── */
+.hbox {
+  background: var(--surface);
+  border-left: 3px solid var(--mint);
+  border-radius: 6px;
+  padding: 0.55em 0.9em;
+  font-size: 0.76em;
+}
+.hbox.gold   { border-left-color: var(--gold); }
+.hbox.red    { border-left-color: var(--red);  }
+.hbox.purple { border-left-color: var(--purple); }
+
+/* ── Formula ──────────────────────────────────────────────────────── */
+.formula {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.82em;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4em 0.8em;
+  margin: 0.4em 0;
+  color: var(--gold);
+}
+
+/* ── Pills / tags ─────────────────────────────────────────────────── */
+.pill {
+  display: inline-block;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.32em;
+  padding: 0.25em 0.8em;
+  border-radius: 99px;
+  margin: 0.15em;
+  letter-spacing: 0.08em;
+}
+.pill-mint   { background: var(--mint-dim);   color: var(--mint);   border: 1px solid var(--mint); }
+.pill-gold   { background: var(--gold-dim);   color: var(--gold);   border: 1px solid var(--gold); }
+.pill-navy   { background: var(--navy-dim);   color: var(--navy);   border: 1px solid var(--navy); }
+.pill-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid var(--purple); }
+
+/* ── Title slide ──────────────────────────────────────────────────── */
+.title-meta {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.36em;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 0.9em;
+}
+.title-tag {
+  display: inline-block;
+  border: 1px solid var(--mint-dim);
+  color: var(--mint);
+  padding: 0.18em 0.7em;
+  border-radius: 4px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.36em;
+  letter-spacing: 0.08em;
+  margin: 0.2em;
+}
+
+/* ── Vector diagram ───────────────────────────────────────────────── */
+.vec-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7em;
+  margin: 0.3em 0;
+}
+.vec-label {
+  min-width: 6em;
+  color: var(--gold);
+  font-weight: 500;
+}
+.vec-bar {
+  height: 1.4em;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  padding: 0 0.5em;
+  font-size: 0.85em;
+  color: var(--bg);
+  font-weight: 500;
+}
+
+/* ── Comparison table ─────────────────────────────────────────────── */
+.cmp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.68em;
+}
+.cmp-table th {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.85em;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  padding: 0.4em 0.6em;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.cmp-table td {
+  padding: 0.5em 0.6em;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.cmp-table tr:last-child td { border-bottom: none; }
+.cmp-table .good { color: var(--green); }
+.cmp-table .bad  { color: var(--red); }
+.cmp-table .highlight-row td { background: var(--mint-dim); }
+
+/* ── Big quote ────────────────────────────────────────────────────── */
+.big-quote {
+  font-family: 'DM Serif Display', serif;
+  font-style: italic;
+  font-size: 1.2em;
+  color: var(--gold);
+  line-height: 1.35;
+  padding: 0.5em 0;
+}
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ═══════════════════════════════════════════════════════ TITLE -->
+<section>
+  <div class="title-meta">Natural Language Processing · Session 04 / 08</div>
+  <h1>Word Embeddings</h1>
+  <h3 style="margin-top:0.2em;">Distributional Hypothesis · Word2Vec · GloVe · Polysemy</h3>
+  <p style="color:var(--text-dim); font-size:0.55em; margin-top:1.2em;">
+    Oscar de Felice &nbsp;·&nbsp; Head of AI, WhiteLab Genomics
+  </p>
+  <div style="margin-top:1em;">
+    <span class="title-tag">distributional hypothesis</span>
+    <span class="title-tag">word2vec</span>
+    <span class="title-tag">skip-gram</span>
+    <span class="title-tag">GloVe</span>
+    <span class="title-tag">cosine similarity</span>
+    <span class="title-tag">polysemy</span>
+    <span class="title-tag">mean pooling</span>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ AGENDA -->
+<section>
+  <h2>Today — ~60 min theory</h2>
+  <div class="cols cols-2" style="font-size:0.76em; margin-top:0.4em;">
+    <div>
+      <div class="card" style="margin-bottom:0.55em;">
+        <div class="card-title">00 · Recap &amp; motivation</div>
+        Where TF-IDF fails — and why we need richer representations.
+      </div>
+      <div class="card" style="margin-bottom:0.55em;">
+        <div class="card-title">01 · Distributional hypothesis</div>
+        "You shall know a word by the company it keeps." — Firth, 1957.
+      </div>
+      <div class="card" style="margin-bottom:0.55em;">
+        <div class="card-title">02 · Word2Vec</div>
+        Skip-gram and CBOW. Negative sampling. The geometry of meaning.
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:0.55em;">
+        <div class="card-title">03 · GloVe</div>
+        Global co-occurrence statistics. How it differs from Word2Vec.
+      </div>
+      <div class="card" style="margin-bottom:0.55em;">
+        <div class="card-title">04 · Geometry of embeddings</div>
+        Cosine similarity, analogies, nearest neighbours.
+      </div>
+      <div class="card" style="margin-bottom:0.55em;">
+        <div class="card-title">05 · Limits &amp; what's next</div>
+        Polysemy, OOV, no context. Why we need contextual embeddings.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SEC 00 RECAP -->
+<section class="section-slide">
+  <span class="section-num">00</span>
+  <h2>Where we are</h2>
+  <p style="color:var(--text-dim); font-size:0.58em;">Sessions 1–3 gave us a solid classical pipeline. Today we break its fundamental assumption.</p>
+</section>
+
+<section>
+  <h2>The pipeline so far</h2>
+  <div class="cols cols-3" style="margin-top:0.3em; font-size:0.8em;">
+    <div class="card mint">
+      <div class="card-title">Sessions 01–02</div>
+      Raw text → tokens → vocabulary.<br/>
+      Normalisation, BPE, n-gram LMs.<br/>
+      <span style="color:var(--text-dim);">Majority-class baseline: ~25% F1.</span>
+    </div>
+    <div class="card gold">
+      <div class="card-title">Session 03</div>
+      Tokens → TF-IDF vector → label.<br/>
+      Naive Bayes, Logistic Regression.<br/>
+      <span style="color:var(--text-dim);">NB ~83% · LR ~89% macro F1.</span>
+    </div>
+    <div class="card navy">
+      <div class="card-title">Today — Session 04</div>
+      Tokens → <em>dense</em> vector → label.<br/>
+      Word embeddings. Mean pooling.<br/>
+      <span style="color:var(--text-dim);">Goal: handle semantics, not just counts.</span>
+    </div>
+  </div>
+  <div class="hbox" style="margin-top:0.7em;">
+    <strong>Key question today:</strong> TF-IDF gives every word its own independent dimension.
+    Can we do better — can we encode <em>meaning</em> into the vector itself?
+  </div>
+</section>
+
+<section>
+  <h2>The problem with TF-IDF</h2>
+  <div class="cols cols-2" style="font-size:0.76em;">
+    <div>
+      <div class="card red" style="margin-bottom:0.6em;">
+        <div class="card-title">Problem 1 — Synonymy</div>
+        "The <strong>car</strong> crashed." vs "The <strong>automobile</strong> crashed."<br/><br/>
+        TF-IDF treats <code>car</code> and <code>automobile</code> as completely unrelated dimensions.
+        A model trained on "car" has no idea "automobile" means the same thing.
+      </div>
+      <div class="card red">
+        <div class="card-title">Problem 2 — Sparsity</div>
+        AG News vocabulary: ~50,000 words.<br/>
+        Each document: maybe 50 words.<br/>
+        Vector: 49,950 zeros out of 50,000 dimensions.<br/><br/>
+        <span style="color:var(--text-dim);">Sparse vectors are hard to generalise from.</span>
+      </div>
+    </div>
+    <div>
+      <div class="card red" style="margin-bottom:0.6em;">
+        <div class="card-title">Problem 3 — No geometry of meaning</div>
+        In TF-IDF space:<br/>
+        distance("king", "queen") = distance("king", "pizza")<br/><br/>
+        There is no sense in which "king" and "queen" are <em>near</em> each other.
+        The representation has no semantic structure.
+      </div>
+      <div class="card red">
+        <div class="card-title">Problem 4 — OOV</div>
+        New word at test time? It gets a zero vector.<br/>
+        The model has never seen it, has nothing to say about it.<br/><br/>
+        <span style="color:var(--text-dim);">Especially bad for rare words, names, technical terms.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What we want instead</h2>
+  <div style="font-size:0.8em;">
+    <div class="hbox gold" style="margin-bottom:0.8em;">
+      <strong>Ideal property:</strong> words with similar meanings should have similar vectors.
+      The <em>geometry</em> of the space should reflect the <em>semantics</em> of the language.
+    </div>
+    <div class="cols cols-3">
+      <div class="card">
+        <div class="card-title">Dense</div>
+        Not 50,000 dimensions.<br/>
+        Typically 100–300 dimensions.<br/>
+        Every dimension carries information.<br/>
+        <span style="color:var(--text-dim);">No wasted zeros.</span>
+      </div>
+      <div class="card gold">
+        <div class="card-title">Semantic geometry</div>
+        Similar words → nearby vectors.<br/>
+        <code>cos(king, queen) ≈ 0.85</code><br/>
+        <code>cos(king, pizza) ≈ 0.04</code><br/>
+        <span style="color:var(--text-dim);">Distance reflects meaning.</span>
+      </div>
+      <div class="card navy">
+        <div class="card-title">Reusable</div>
+        Train once on a large corpus.<br/>
+        Use on any downstream task.<br/>
+        <span style="color:var(--text-dim);">The original "pre-trained model".</span>
+      </div>
+    </div>
+    <div class="hbox" style="margin-top:0.7em;">
+      <strong>The question is:</strong> how do we learn such vectors from raw text,
+      with no labels, no human annotation?
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SEC 01 DISTRIBUTIONAL -->
+<section class="section-slide">
+  <span class="section-num">01</span>
+  <h2>The Distributional Hypothesis</h2>
+  <p style="color:var(--text-dim); font-size:0.58em;">"You shall know a word by the company it keeps." — Firth, 1957</p>
+</section>
+
+<section>
+  <h2>The core intuition</h2>
+  <div style="font-size:0.8em;">
+    <div class="big-quote">"You shall know a word by the company it keeps."</div>
+    <p style="color:var(--text-dim); font-size:0.85em; margin-bottom:0.6em;">J.R. Firth, 1957 — long before neural networks existed.</p>
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">Example</div>
+          You encounter the word <em>tezgüino</em> — you have never seen it before.<br/><br/>
+          Context sentences:<br/>
+          "A bottle of <strong>tezgüino</strong> is on the table."<br/>
+          "Everyone enjoyed the <strong>tezgüino</strong>."<br/>
+          "We make <strong>tezgüino</strong> out of corn."<br/><br/>
+          You don't know the word — but you know it's a <em>drink</em>.
+        </div>
+      </div>
+      <div>
+        <div class="card gold">
+          <div class="card-title">Why this works</div>
+          Words that appear in similar contexts tend to have similar meanings.<br/><br/>
+          "dog" and "cat" both appear near: <code>pet</code>, <code>feed</code>, <code>vet</code>, <code>fur</code>.<br/>
+          "dog" and "democracy" do not share contexts.<br/><br/>
+          <strong>Idea:</strong> represent a word by the distribution of its contexts.
+          Words with similar distributions get similar vectors.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>From context to vector</h2>
+  <div style="font-size:0.76em;">
+    <p style="color:var(--text-dim); margin-bottom:0.5em;">
+      Concrete example. A small corpus about food and animals.
+    </p>
+    <div class="cols cols-2" style="margin-bottom:0.6em;">
+      <div>
+        <div class="card" style="margin-bottom:0.4em;">
+          <div class="card-title">Sentences (corpus)</div>
+          "The <strong>dog</strong> ate the food."<br/>
+          "The <strong>cat</strong> ate the food."<br/>
+          "The <strong>dog</strong> ran in the park."<br/>
+          "The <strong>cat</strong> ran in the park."<br/>
+          "The <strong>car</strong> ran out of fuel."
+        </div>
+      </div>
+      <div>
+        <div class="card gold">
+          <div class="card-title">Co-occurrence counts (window=1)</div>
+          <table style="width:100%; font-size:0.9em; border-collapse:collapse;">
+            <tr>
+              <th style="color:var(--text-dim); padding:0.2em 0.4em; border-bottom:1px solid var(--border);">word</th>
+              <th style="color:var(--text-dim); padding:0.2em 0.4em; border-bottom:1px solid var(--border);">ate</th>
+              <th style="color:var(--text-dim); padding:0.2em 0.4em; border-bottom:1px solid var(--border);">ran</th>
+              <th style="color:var(--text-dim); padding:0.2em 0.4em; border-bottom:1px solid var(--border);">park</th>
+              <th style="color:var(--text-dim); padding:0.2em 0.4em; border-bottom:1px solid var(--border);">fuel</th>
+            </tr>
+            <tr>
+              <td style="padding:0.2em 0.4em; color:var(--mint);">dog</td>
+              <td style="padding:0.2em 0.4em;">1</td>
+              <td style="padding:0.2em 0.4em;">1</td>
+              <td style="padding:0.2em 0.4em;">1</td>
+              <td style="padding:0.2em 0.4em;">0</td>
+            </tr>
+            <tr>
+              <td style="padding:0.2em 0.4em; color:var(--mint);">cat</td>
+              <td style="padding:0.2em 0.4em;">1</td>
+              <td style="padding:0.2em 0.4em;">1</td>
+              <td style="padding:0.2em 0.4em;">1</td>
+              <td style="padding:0.2em 0.4em;">0</td>
+            </tr>
+            <tr>
+              <td style="padding:0.2em 0.4em; color:var(--gold);">car</td>
+              <td style="padding:0.2em 0.4em;">0</td>
+              <td style="padding:0.2em 0.4em;">1</td>
+              <td style="padding:0.2em 0.4em;">0</td>
+              <td style="padding:0.2em 0.4em;">1</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="hbox">
+      <strong>Observation:</strong> "dog" and "cat" have identical co-occurrence vectors.
+      "car" is different. The counts already encode that dogs and cats are similar, cars are not.
+      Word2Vec and GloVe <em>learn</em> dense versions of exactly this intuition.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SEC 02 WORD2VEC -->
+<section class="section-slide">
+  <span class="section-num">02</span>
+  <h2>Word2Vec</h2>
+  <p style="color:var(--text-dim); font-size:0.58em;">Mikolov et al., 2013 — the paper that changed NLP.</p>
+</section>
+
+<section>
+  <h2>The Word2Vec idea</h2>
+  <div style="font-size:0.78em;">
+    <div class="hbox gold" style="margin-bottom:0.6em;">
+      <strong>Key insight:</strong> instead of building a co-occurrence matrix and factorising it,
+      train a tiny neural network to <em>predict context from a word</em>. The learned weights
+      are the embeddings.
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">Skip-gram</div>
+          Given a <strong>centre word</strong>, predict its <strong>context words</strong>.<br/><br/>
+          Sentence: "The <strong>cat</strong> sat on the mat"<br/>
+          Window = 2:<br/>
+          Input: <code>cat</code><br/>
+          Targets: <code>The</code>, <code>sat</code>, <code>on</code>... wait, wrong order.<br/><br/>
+          Input: <code>sat</code><br/>
+          Targets: <code>The</code>, <code>cat</code>, <code>on</code>, <code>the</code>
+        </div>
+        <div class="card navy">
+          <div class="card-title">CBOW (Continuous Bag of Words)</div>
+          Given the <strong>context words</strong>, predict the <strong>centre word</strong>.<br/><br/>
+          Input: <code>The, cat, on, the</code><br/>
+          Target: <code>sat</code><br/><br/>
+          Faster to train. Skip-gram works better for rare words.
+        </div>
+      </div>
+      <div>
+<pre><code class="language-python"># Conceptual skip-gram training loop
+for sentence in corpus:
+    for i, centre in enumerate(sentence):
+        # collect context window
+        context = sentence[
+            max(0, i-window) : i
+        ] + sentence[
+            i+1 : i+window+1
+        ]
+        for target in context:
+            # gradient step:
+            # push embed(centre) closer
+            # to embed(target)
+            update(embed[centre],
+                   embed[target])</code></pre>
+        <div class="hbox" style="margin-top:0.5em;">
+          No labels needed. The corpus <em>is</em> the supervision signal.
+          This is <strong>self-supervised learning</strong>.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Skip-gram — worked example</h2>
+  <div style="font-size:0.76em;">
+    <div class="hbox" style="margin-bottom:0.5em;">
+      Sentence: <code>"The quick brown fox jumps over the lazy dog"</code>
+      &nbsp; Window size: <strong>2</strong>
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">Training pairs generated from "fox"</div>
+          <table style="width:100%; font-size:0.9em; border-collapse:collapse;">
+            <tr>
+              <th style="color:var(--text-dim); padding:0.2em 0.5em; border-bottom:1px solid var(--border);">Centre word</th>
+              <th style="color:var(--text-dim); padding:0.2em 0.5em; border-bottom:1px solid var(--border);">Context word</th>
+            </tr>
+            <tr><td style="padding:0.2em 0.5em; color:var(--mint);">fox</td><td style="padding:0.2em 0.5em;">brown</td></tr>
+            <tr><td style="padding:0.2em 0.5em; color:var(--mint);">fox</td><td style="padding:0.2em 0.5em;">quick</td></tr>
+            <tr><td style="padding:0.2em 0.5em; color:var(--mint);">fox</td><td style="padding:0.2em 0.5em;">jumps</td></tr>
+            <tr><td style="padding:0.2em 0.5em; color:var(--mint);">fox</td><td style="padding:0.2em 0.5em;">over</td></tr>
+          </table>
+        </div>
+        <div class="hbox" style="font-size:0.9em;">
+          With a vocabulary of 10,000 words and a corpus of 1 billion tokens,
+          you generate ~5 billion training pairs. Training runs for hours on a GPU.
+          Result: a 300-dimensional vector for every word in the vocabulary.
+        </div>
+      </div>
+      <div>
+        <div class="card gold">
+          <div class="card-title">What the network learns</div>
+          Input layer: one-hot vector for the centre word.<br/>
+          Hidden layer: 300 neurons — <em>no activation</em>.<br/>
+          Output layer: softmax over vocab.<br/><br/>
+          The <strong>hidden layer weights</strong> are the embeddings.<br/>
+          After training, we throw away the output layer.<br/><br/>
+          <span style="color:var(--text-dim);">The network is just a means to an end. The weights are the product.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Negative sampling — why it matters</h2>
+  <div style="font-size:0.78em;">
+    <div class="hbox red" style="margin-bottom:0.5em;">
+      <strong>Problem:</strong> softmax over a 100,000-word vocabulary requires computing
+      100,000 dot products per gradient step. With billions of training pairs, this is
+      impossibly slow.
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">The trick — negative sampling</div>
+          Instead of a full softmax, turn it into a binary classification problem:<br/><br/>
+          Given the pair (<code>fox</code>, <code>jumps</code>): is this a real context pair?
+          <span style="color:var(--green);">→ YES (positive)</span><br/><br/>
+          Given the pair (<code>fox</code>, <code>parliament</code>): real context?
+          <span style="color:var(--red);">→ NO (negative, randomly sampled)</span><br/><br/>
+          Train to output 1 for positives, 0 for negatives.
+          Only update the embeddings of the ~5 negative samples, not all 100,000 words.
+        </div>
+      </div>
+      <div>
+        <div class="card gold">
+          <div class="card-title">Effect on training</div>
+          Each step: update 1 positive + ~5 negatives = 6 vectors.<br/>
+          vs. full softmax: update all 100,000 vectors.<br/><br/>
+          <strong>Speedup: ~16,000×</strong><br/><br/>
+          Negative words are sampled proportionally to their frequency raised to the 3/4 power —
+          this empirically gives better embeddings than uniform sampling.
+        </div>
+        <div class="hbox" style="margin-top:0.5em;">
+          This is the key engineering insight that made Word2Vec practical.
+          The idea predates Word2Vec but was first applied at this scale.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>CBOW — the other direction</h2>
+  <div style="font-size:0.78em;">
+    <div class="hbox" style="margin-bottom:0.5em;">
+      <strong>Continuous Bag of Words (CBOW)</strong> is the mirror image of Skip-gram:
+      given the context words, predict the centre word.
+      Same weights, opposite data flow.
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">Skip-gram (recap)</div>
+          Input: <strong>centre word</strong><br/>
+          Output: each <strong>context word</strong> independently<br/><br/>
+          Sentence: <code>"the quick brown <em>fox</em> jumps"</code><br/>
+          Input: <code>fox</code><br/>
+          Targets: <code>quick</code>, <code>brown</code>, <code>jumps</code>, <code>over</code><br/><br/>
+          One centre → many predictions.<br/>
+          <span style="color:var(--text-dim);">Better for rare words.</span>
+        </div>
+        <div class="card navy">
+          <div class="card-title">CBOW</div>
+          Input: <strong>all context words averaged</strong><br/>
+          Output: <strong>centre word</strong><br/><br/>
+          Sentence: <code>"the quick brown <em>fox</em> jumps"</code><br/>
+          Input: mean of <code>[quick, brown, jumps, over]</code><br/>
+          Target: <code>fox</code><br/><br/>
+          Many inputs → one prediction.<br/>
+          <span style="color:var(--text-dim);">Faster to train, better on frequent words.</span>
+        </div>
+      </div>
+      <div>
+        <div class="card gold" style="margin-bottom:0.5em;">
+          <div class="card-title">Network architecture — CBOW</div>
+          <ol style="margin:0.3em 0 0.3em 1.2em; line-height:1.8;">
+            <li>One-hot encode each context word → shape <code>(V,)</code></li>
+            <li>Average the one-hot vectors → shape <code>(V,)</code></li>
+            <li><strong>W₁</strong>: <code>(V, d)</code> — projects to embedding space</li>
+            <li>Hidden layer: <code>(d,)</code> — <em>no activation</em></li>
+            <li><strong>W₂</strong>: <code>(d, V)</code> — projects back to vocab</li>
+            <li>Softmax → probability over vocabulary</li>
+          </ol>
+          The <strong>embedding</strong> for word <em>w</em> is row <em>w</em> of <strong>W₁</strong>
+          (or the average of W₁ row and W₂ column).
+        </div>
+        <div class="hbox">
+          <strong>In the TP:</strong> you will implement CBOW with Keras on a small toy corpus.
+          The hidden layer weights <em>are</em> the embeddings — you will extract and visualise them.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Skip-gram vs CBOW — side by side</h2>
+  <div style="font-size:0.76em;">
+    <div class="cols cols-2" style="margin-bottom:0.6em;">
+      <div class="card">
+        <div class="card-title">Data flow</div>
+        <table style="width:100%; border-collapse:collapse; font-size:0.92em;">
+          <tr>
+            <th style="color:var(--text-dim); padding:0.3em 0.5em; border-bottom:1px solid var(--border);"></th>
+            <th style="color:var(--text-dim); padding:0.3em 0.5em; border-bottom:1px solid var(--border);">Skip-gram</th>
+            <th style="color:var(--text-dim); padding:0.3em 0.5em; border-bottom:1px solid var(--border);">CBOW</th>
+          </tr>
+          <tr>
+            <td style="padding:0.3em 0.5em; color:var(--text-dim);">Input</td>
+            <td style="padding:0.3em 0.5em;">Centre word</td>
+            <td style="padding:0.3em 0.5em;">Context words (averaged)</td>
+          </tr>
+          <tr>
+            <td style="padding:0.3em 0.5em; color:var(--text-dim);">Target</td>
+            <td style="padding:0.3em 0.5em;">Each context word</td>
+            <td style="padding:0.3em 0.5em;">Centre word</td>
+          </tr>
+          <tr>
+            <td style="padding:0.3em 0.5em; color:var(--text-dim);">Pairs per token</td>
+            <td style="padding:0.3em 0.5em;">2 × window</td>
+            <td style="padding:0.3em 0.5em;">1</td>
+          </tr>
+          <tr>
+            <td style="padding:0.3em 0.5em; color:var(--text-dim);">Training speed</td>
+            <td style="padding:0.3em 0.5em;">Slower</td>
+            <td style="padding:0.3em 0.5em; color:var(--green);">Faster</td>
+          </tr>
+          <tr>
+            <td style="padding:0.3em 0.5em; color:var(--text-dim);">Rare words</td>
+            <td style="padding:0.3em 0.5em; color:var(--green);">Better</td>
+            <td style="padding:0.3em 0.5em;">Weaker</td>
+          </tr>
+          <tr>
+            <td style="padding:0.3em 0.5em; color:var(--text-dim);">Typical use</td>
+            <td style="padding:0.3em 0.5em;">Research, rare vocab</td>
+            <td style="padding:0.3em 0.5em;">Production, large corpora</td>
+          </tr>
+        </table>
+      </div>
+      <div>
+        <div class="card gold" style="margin-bottom:0.5em;">
+          <div class="card-title">Example — window = 1</div>
+          Sentence: <code>"the king is royal"</code><br/><br/>
+          <strong>Skip-gram pairs:</strong><br/>
+          <code>(king, the)</code> · <code>(king, is)</code><br/>
+          <code>(is, king)</code> · <code>(is, royal)</code><br/><br/>
+          <strong>CBOW pairs:</strong><br/>
+          input <code>mean([the, is])</code> → target <code>king</code><br/>
+          input <code>mean([king, royal])</code> → target <code>is</code>
+        </div>
+        <div class="hbox">
+          <strong>Bottom line:</strong> both algorithms learn the same distributional hypothesis.
+          The embeddings they produce are qualitatively similar.
+          CBOW is what you implement in the TP because it maps cleanly
+          to a single Keras <code>Dense</code> layer.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SEC 03 GLOVE -->
+<section class="section-slide">
+  <span class="section-num">03</span>
+  <h2>GloVe</h2>
+  <p style="color:var(--text-dim); font-size:0.58em;">Pennington, Socher, Manning — Stanford, 2014.</p>
+</section>
+
+<section>
+  <h2>GloVe — Global Vectors</h2>
+  <div style="font-size:0.76em;">
+    <div class="hbox" style="margin-bottom:0.5em;">
+      <strong>Word2Vec problem:</strong> it trains on local context windows and never directly
+      sees the global co-occurrence statistics of the corpus.
+      GloVe fixes this.
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">GloVe objective</div>
+          Build the full co-occurrence matrix <strong>X</strong> first.
+          <code>X[i][j]</code> = how often word <em>j</em> appears in the context of word <em>i</em> across the whole corpus.<br/><br/>
+          Then find vectors <strong>w_i</strong> and <strong>w_j</strong> such that:<br/>
+          <div class="formula">w_i · w_j + b_i + b_j ≈ log X[i][j]</div>
+          The dot product of two word vectors should approximate the log of their co-occurrence count.
+        </div>
+        <div class="card navy">
+          <div class="card-title">Why log?</div>
+          Co-occurrence counts span several orders of magnitude.<br/>
+          "the" co-occurs with everything: count ≈ 10,000,000.<br/>
+          "astronaut" co-occurs with "moon": count ≈ 200.<br/><br/>
+          Log compresses this range and makes the objective stable.
+        </div>
+      </div>
+      <div>
+        <div class="card gold">
+          <div class="card-title">Word2Vec vs GloVe in practice</div>
+          <table style="width:100%; font-size:0.9em; border-collapse:collapse;">
+            <tr>
+              <th style="color:var(--text-dim); padding:0.2em 0.4em;"></th>
+              <th style="color:var(--text-dim); padding:0.2em 0.4em;">Word2Vec</th>
+              <th style="color:var(--text-dim); padding:0.2em 0.4em;">GloVe</th>
+            </tr>
+            <tr>
+              <td style="padding:0.2em 0.4em; color:var(--text-dim);">Statistics</td>
+              <td style="padding:0.2em 0.4em;">Local window</td>
+              <td style="padding:0.2em 0.4em;">Global matrix</td>
+            </tr>
+            <tr>
+              <td style="padding:0.2em 0.4em; color:var(--text-dim);">Training</td>
+              <td style="padding:0.2em 0.4em;">SGD on pairs</td>
+              <td style="padding:0.2em 0.4em;">Least squares on matrix</td>
+            </tr>
+            <tr>
+              <td style="padding:0.2em 0.4em; color:var(--text-dim);">Best for</td>
+              <td style="padding:0.2em 0.4em;">Syntax, rare words</td>
+              <td style="padding:0.2em 0.4em;">Analogies, semantics</td>
+            </tr>
+            <tr>
+              <td style="padding:0.2em 0.4em; color:var(--text-dim);">In practice</td>
+              <td colspan="2" style="padding:0.2em 0.4em; color:var(--green);">Performance is very similar. Use whichever is available.</td>
+            </tr>
+          </table>
+        </div>
+        <div class="hbox" style="margin-top:0.5em;">
+          For this course we use <strong>GloVe 6B</strong> (trained on Wikipedia + Gigaword,
+          6 billion tokens, 400K vocabulary, 100d or 300d vectors). Free to download.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SEC 04 GEOMETRY -->
+<section class="section-slide">
+  <span class="section-num">04</span>
+  <h2>The Geometry of Meaning</h2>
+  <p style="color:var(--text-dim); font-size:0.58em;">Cosine similarity · analogies · nearest neighbours</p>
+</section>
+
+<section>
+  <h2>Cosine similarity</h2>
+  <div style="font-size:0.78em;">
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">Why cosine, not Euclidean distance?</div>
+          Embedding vectors vary in magnitude — long documents produce longer mean vectors,
+          frequent words may have larger norms.<br/><br/>
+          Cosine similarity <em>ignores magnitude</em> and measures only the <em>angle</em>
+          between two vectors.<br/><br/>
+          <div class="formula">cos(u, v) = (u · v) / (||u|| · ||v||)</div>
+          Range: −1 (opposite) to +1 (identical direction).
+        </div>
+        <div class="card gold">
+          <div class="card-title">AG News examples (GloVe 100d)</div>
+          <code>cos(football, soccer)</code> ≈ 0.91<br/>
+          <code>cos(football, basketball)</code> ≈ 0.85<br/>
+          <code>cos(football, economy)</code> ≈ 0.14<br/>
+          <code>cos(football, politics)</code> ≈ 0.21<br/><br/>
+          The geometry reflects what we intuitively know about these concepts.
+        </div>
+      </div>
+      <div>
+<pre><code class="language-python">import numpy as np
+
+def cosine_similarity(u: np.ndarray,
+                      v: np.ndarray) -> float:
+    """
+    Compute cosine similarity between two vectors.
+
+    Parameters
+    ----------
+    u : np.ndarray, shape (d,)
+    v : np.ndarray, shape (d,)
+
+    Returns
+    -------
+    float
+        Similarity in [-1, 1].
+    """
+    return np.dot(u, v) / (
+        np.linalg.norm(u) * np.linalg.norm(v)
+    )
+
+# Example
+emb = load_glove("glove.6B.100d.txt")
+cos = cosine_similarity(
+    emb["football"],
+    emb["soccer"]
+)
+print(f"{cos:.3f}")  # → 0.914</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Analogies — king − man + woman ≈ queen</h2>
+  <div style="font-size:0.76em;">
+    <div class="hbox gold" style="margin-bottom:0.5em;">
+      <strong>The most famous result in Word2Vec:</strong>
+      vector arithmetic in embedding space encodes semantic relationships.
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">How it works</div>
+          The direction <code>man → woman</code> encodes the concept "change gender".<br/>
+          Apply that direction to <code>king</code>:<br/><br/>
+          <div class="formula">v(king) − v(man) + v(woman) ≈ v(queen)</div>
+          Find the word in the vocabulary whose vector is closest to this result.
+          Answer: <code>queen</code>.
+        </div>
+        <div class="card navy">
+          <div class="card-title">More examples</div>
+          <code>Paris − France + Italy ≈ Rome</code> (capitals)<br/>
+          <code>walked − walk + run ≈ ran</code> (verb tense)<br/>
+          <code>biggest − big + tall ≈ tallest</code> (superlative)<br/>
+          <code>CEO − man + woman ≈ CFO</code> ⚠ (bias!)
+        </div>
+      </div>
+      <div>
+<pre><code class="language-python">def analogy(emb: dict,
+            a: str,
+            b: str,
+            c: str,
+            n: int = 5) -> list[str]:
+    """
+    Solve: a is to b as c is to ?.
+
+    Parameters
+    ----------
+    emb : dict
+        Word → embedding mapping.
+    a, b, c : str
+        Analogy words (a:b :: c:?).
+    n : int
+        Number of candidates to return.
+
+    Returns
+    -------
+    list of str
+        Top-n nearest neighbours to
+        emb[b] - emb[a] + emb[c].
+    """
+    target = emb[b] - emb[a] + emb[c]
+    exclude = {a, b, c}
+    sims = {
+        w: cosine_similarity(target, v)
+        for w, v in emb.items()
+        if w not in exclude
+    }
+    return sorted(sims,
+                  key=sims.get,
+                  reverse=True)[:n]
+
+print(analogy(emb, "man", "king", "woman"))
+# → ['queen', 'monarch', ...]</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Nearest neighbours — probing the space</h2>
+  <div style="font-size:0.76em;">
+    <div class="cols cols-3" style="margin-bottom:0.5em;">
+      <div class="card">
+        <div class="card-title">Nearest neighbours of "goal"</div>
+        (GloVe 100d, trained on news)<br/><br/>
+        1. <code>goals</code> (0.94)<br/>
+        2. <code>scored</code> (0.88)<br/>
+        3. <code>equaliser</code> (0.85)<br/>
+        4. <code>penalty</code> (0.83)<br/>
+        5. <code>midfielder</code> (0.82)<br/><br/>
+        <span style="color:var(--text-dim);">Clearly sports-domain neighbours.</span>
+      </div>
+      <div class="card gold">
+        <div class="card-title">Nearest neighbours of "bank"</div>
+        (GloVe 100d, trained on news)<br/><br/>
+        1. <code>banks</code> (0.93)<br/>
+        2. <code>banking</code> (0.91)<br/>
+        3. <code>financial</code> (0.87)<br/>
+        4. <code>lender</code> (0.84)<br/>
+        5. <code>depositors</code> (0.80)<br/><br/>
+        <span style="color:var(--red);">Notice: <em>river bank</em> is missing!</span>
+      </div>
+      <div class="card navy">
+        <div class="card-title">Nearest neighbours of "python"</div>
+        (GloVe 100d, trained on Wikipedia)<br/><br/>
+        1. <code>perl</code> (0.88)<br/>
+        2. <code>java</code> (0.86)<br/>
+        3. <code>php</code> (0.85)<br/>
+        4. <code>scripting</code> (0.83)<br/>
+        5. <code>ruby</code> (0.81)<br/><br/>
+        <span style="color:var(--red);">The snake is buried!</span>
+      </div>
+    </div>
+    <div class="hbox red">
+      <strong>Key observation:</strong> each word gets <em>one</em> vector regardless of its meaning.
+      "bank" → always the financial sense in a news corpus.
+      "python" → always the programming language on Wikipedia.
+      This is the <strong>polysemy problem</strong> — coming in Section 05.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Using embeddings for classification</h2>
+  <div style="font-size:0.78em;">
+    <div class="hbox" style="margin-bottom:0.5em;">
+      We have word vectors. But our classifier needs a <em>document</em> vector.
+      The simplest approach: <strong>mean pooling</strong>.
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">Mean pooling</div>
+          1. Tokenise the document.<br/>
+          2. Look up the embedding for each token.<br/>
+          3. Average all token vectors.<br/>
+          4. The mean vector is the document representation.<br/><br/>
+          <div class="formula">d_vec = (1/n) Σ embed(w_i)</div>
+          Then feed <code>d_vec</code> into a logistic regression classifier.
+        </div>
+        <div class="card gold">
+          <div class="card-title">Example</div>
+          Document: "France wins the World Cup final"<br/><br/>
+          Tokens: <code>[france, wins, world, cup, final]</code><br/>
+          Look up 5 vectors in GloVe.<br/>
+          Average → one 100-dimensional vector.<br/>
+          Feed to LR → predict <code>Sports</code>.
+        </div>
+      </div>
+      <div>
+<pre><code class="language-python">def mean_pool(
+    tokens: list[str],
+    embeddings: dict,
+    dim: int = 100,
+) -> np.ndarray:
+    """
+    Compute mean-pooled document embedding.
+
+    Parameters
+    ----------
+    tokens : list of str
+        Pre-tokenised document.
+    embeddings : dict
+        Word → np.ndarray mapping.
+    dim : int
+        Embedding dimension, used as
+        fallback for OOV tokens.
+
+    Returns
+    -------
+    np.ndarray, shape (dim,)
+        Mean of token embeddings.
+        Returns zero vector if no
+        token has an embedding.
+    """
+    vecs = [
+        embeddings[t]
+        for t in tokens
+        if t in embeddings
+    ]
+    if not vecs:
+        return np.zeros(dim)
+    return np.mean(vecs, axis=0)</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SEC 05 LIMITS -->
+<section class="section-slide">
+  <span class="section-num">05</span>
+  <h2>Limits and What's Next</h2>
+  <p style="color:var(--text-dim); font-size:0.58em;">Why static embeddings are not the end of the story.</p>
+</section>
+
+<section>
+  <h2>The polysemy problem</h2>
+  <div style="font-size:0.76em;">
+    <div class="hbox red" style="margin-bottom:0.5em;">
+      <strong>Fatal limitation of Word2Vec and GloVe:</strong>
+      every word gets exactly one vector, regardless of how many meanings it has.
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">Polysemy — same word, different meanings</div>
+          "I went to the <strong>bank</strong> to withdraw money."<br/>
+          → financial institution<br/><br/>
+          "She sat on the <strong>bank</strong> of the river."<br/>
+          → edge of a river<br/><br/>
+          "The plane <strong>banked</strong> sharply to the left."<br/>
+          → tilted<br/><br/>
+          Word2Vec gives all three the same vector — a confused average of all three meanings.
+        </div>
+      </div>
+      <div>
+        <div class="card red" style="margin-bottom:0.5em;">
+          <div class="card-title">Consequences</div>
+          Semantic similarity breaks down for polysemous words.<br/>
+          cos(<code>bank</code>, <code>river</code>) is low even though it should be high in context 2.<br/><br/>
+          Classification errors: a Sports article mentioning
+          "the team <strong>bat</strong>ted well" and a Nature article about a
+          "<strong>bat</strong> colony" will have very similar document vectors.
+        </div>
+        <div class="card gold">
+          <div class="card-title">The fix — contextual embeddings</div>
+          Instead of one vector per word, compute a vector
+          that depends on the <em>surrounding context</em>.<br/><br/>
+          <code>bank</code> in a financial sentence → one vector.<br/>
+          <code>bank</code> near <code>river</code> → a different vector.<br/><br/>
+          <strong>This is what ELMo, BERT, and all modern Transformers do.</strong>
+          Coming in Session 06.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Other limitations of static embeddings</h2>
+  <div class="cols cols-3" style="font-size:0.76em;">
+    <div class="card red">
+      <div class="card-title">Out-of-vocabulary (OOV)</div>
+      Words not seen during training get no embedding.<br/><br/>
+      "ChatGPT" in a GloVe model trained in 2014: <span style="color:var(--red);">unknown</span>.<br/>
+      "SARS-CoV-2": <span style="color:var(--red);">unknown</span>.<br/>
+      Any new product name, person, acronym: <span style="color:var(--red);">unknown</span>.<br/><br/>
+      Mean pooling assigns zero to OOV tokens — as if they were not there.
+    </div>
+    <div class="card red">
+      <div class="card-title">Bias</div>
+      Embeddings absorb all statistical regularities of the training corpus, including human biases:<br/><br/>
+      <code>doctor − man + woman ≈ nurse</code><br/>
+      <code>programmer − man + woman ≈ homemaker</code><br/><br/>
+      The corpus reflects historical gender roles. The model learns them as facts.
+      This is not just an NLP problem — it affects downstream decisions.
+    </div>
+    <div class="card red">
+      <div class="card-title">Mean pooling loses word order</div>
+      "The dog bit the man" and "The man bit the dog" have the same bag of words.<br/><br/>
+      They have the same mean-pooled embedding.<br/><br/>
+      A mean-pooling classifier cannot distinguish them — same representation, same prediction.
+      Word order is completely discarded.
+    </div>
+  </div>
+  <div class="hbox" style="margin-top:0.6em; font-size:0.78em;">
+    <strong>Summary:</strong> Word2Vec and GloVe are powerful and still useful — but they are static, decontextualised, and biased.
+    Session 05 (RNNs) will preserve word order. Session 06 (Transformers) will add context-dependence.
+    The arc is: BoW → embeddings → sequences → attention.
+  </div>
+</section>
+
+<section>
+  <h2>The comparison table — where we are</h2>
+  <div style="font-size:0.72em;">
+    <table class="cmp-table">
+      <tr>
+        <th>Session</th>
+        <th>Model</th>
+        <th>Representation</th>
+        <th>AG News Macro F1</th>
+        <th>Key strength</th>
+        <th>Key weakness</th>
+      </tr>
+      <tr>
+        <td>S01</td>
+        <td>Majority baseline</td>
+        <td>None</td>
+        <td class="bad">~0.25</td>
+        <td>Trivial to build</td>
+        <td>Ignores the text</td>
+      </tr>
+      <tr>
+        <td>S03</td>
+        <td>Naive Bayes</td>
+        <td>TF-IDF</td>
+        <td class="good">~0.83</td>
+        <td>Fast, interpretable</td>
+        <td>Feature independence</td>
+      </tr>
+      <tr>
+        <td>S03</td>
+        <td>Logistic Regression</td>
+        <td>TF-IDF</td>
+        <td class="good">~0.89</td>
+        <td>Strong baseline</td>
+        <td>Sparse, no semantics</td>
+      </tr>
+      <tr class="highlight-row">
+        <td>S04</td>
+        <td>LR + mean pooling</td>
+        <td>GloVe 100d</td>
+        <td>← your result</td>
+        <td>Dense, semantic</td>
+        <td>Static, no word order</td>
+      </tr>
+      <tr style="opacity:0.45;">
+        <td>S05</td>
+        <td>LSTM classifier</td>
+        <td>Embeddings + sequence</td>
+        <td>TBD</td>
+        <td>Word order, context</td>
+        <td>Slow, no parallelism</td>
+      </tr>
+      <tr style="opacity:0.45;">
+        <td>S06+</td>
+        <td>BERT fine-tuning</td>
+        <td>Contextual</td>
+        <td>TBD</td>
+        <td>State of the art</td>
+        <td>Compute-heavy</td>
+      </tr>
+    </table>
+    <div class="hbox" style="margin-top:0.5em;">
+      Fill in your TP result. The goal: beat LR + TF-IDF (~0.89). Does semantic richness compensate for losing sparsity?
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ TP BRIDGE -->
+<section>
+  <h2>TP 04 — what you will build</h2>
+  <div style="font-size:0.76em;">
+    <div class="cols cols-2" style="margin-bottom:0.5em;">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">Part 1 — Load and explore GloVe</div>
+          Load pre-trained GloVe 100d vectors.<br/>
+          Compute nearest neighbours for chosen words.<br/>
+          Visualise a 2D PCA projection of a word cluster.
+        </div>
+        <div class="card gold" style="margin-bottom:0.5em;">
+          <div class="card-title">Part 2 — Analogy evaluation</div>
+          Solve word analogies: a:b :: c:?<br/>
+          Evaluate on the standard Google analogy dataset (semantic + syntactic subsets).
+        </div>
+        <div class="card navy">
+          <div class="card-title">Part 3 — Mean-pooling classifier</div>
+          Implement <code>mean_pool</code>.<br/>
+          Build a document embedding matrix for AG News train/val/test.<br/>
+          Train a logistic regression on top. Compare against TF-IDF LR.
+        </div>
+      </div>
+      <div>
+        <div class="card purple" style="margin-bottom:0.5em;">
+          <div class="card-title">Part 4 — Error analysis</div>
+          Find 10 examples where embeddings beat TF-IDF.<br/>
+          Find 10 examples where TF-IDF beats embeddings.<br/>
+          Explain the pattern — what does each representation miss?
+        </div>
+        <div class="hbox" style="margin-bottom:0.5em;">
+          <strong>Deliverable:</strong> updated comparison table with your AG News Macro F1
+          for the mean-pooling classifier. Typed error analysis (≥200 words).
+        </div>
+        <div class="hbox gold">
+          <strong>Bonus:</strong> weighted pooling by TF-IDF scores instead of uniform average.
+          Does it improve performance? Why or why not?
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:0.4em;">
+      <span class="pill pill-mint">glove</span>
+      <span class="pill pill-gold">cosine similarity</span>
+      <span class="pill pill-navy">mean pooling</span>
+      <span class="pill pill-purple">pca visualisation</span>
+      <span class="pill pill-mint">analogy eval</span>
+      <span class="pill pill-gold">error analysis</span>
+    </div>
+  </div>
+</section>
+
+</div><!-- /slides -->
+</div><!-- /reveal -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/notes/notes.min.js"></script>
+
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    progress: true,
+    center: true,
+    transition: 'fade',
+    transitionSpeed: 'fast',
+    width: 1200,
+    height: 700,
+    margin: 0.06,
+    minScale: 0.1,
+    plugins: [ RevealHighlight, RevealNotes ]
+  });
+
+  Reveal.addEventListener('ready', function() {
+    document.querySelectorAll('.reveal .slides section').forEach(function(slide) {
+      slide.style.zoom = '1';
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NLP — Session 05: RNNs and LSTMs</title>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+
+<!-- Reveal.js -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/monokai.min.css"/>
+
+<style>
+/* ── Palette ──────────────────────────────────────────────────────── */
+:root {
+  --bg:        #0d1117;
+  --surface:   #161b22;
+  --border:    #30363d;
+  --mint:      #56c8ba;
+  --mint-dim:  #1e4a45;
+  --navy:      #4a6fc8;
+  --navy-dim:  #1a2740;
+  --gold:      #e8c47a;
+  --gold-dim:  #3d2e0f;
+  --text:      #e6edf3;
+  --text-dim:  #8b949e;
+  --red:       #f47067;
+  --red-dim:   #3d1212;
+  --green:     #7ee787;
+  --green-dim: #122d1a;
+  --purple:    #c084fc;
+  --purple-dim:#2d1a40;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+.reveal-viewport { background: var(--bg); }
+.reveal {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 34px;
+  color: var(--text);
+}
+.reveal h1, .reveal h2, .reveal h3 {
+  font-family: 'DM Serif Display', serif;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin-bottom: 0.4em;
+}
+.reveal h1 { font-size: 1.9em; line-height: 1.1; }
+.reveal h2 { font-size: 1.25em; color: var(--mint); }
+.reveal h3 { font-size: 0.95em; color: var(--gold); font-style: italic; }
+.reveal p  { font-weight: 300; line-height: 1.5; margin: 0.3em 0; }
+.reveal li { font-weight: 300; line-height: 1.5; margin: 0.2em 0; }
+.reveal strong { font-weight: 500; color: var(--mint); }
+.reveal em     { color: var(--gold); font-style: italic; }
+.reveal code {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.76em;
+  background: var(--surface);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  color: var(--mint);
+}
+.reveal pre { margin: 0.5em auto; box-shadow: none; width: 100%; }
+.reveal pre code {
+  font-size: 0.68em;
+  border-radius: 8px;
+  padding: 0.9em 1.1em;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  max-height: 380px;
+  overflow: auto;
+}
+.reveal ul { list-style: none; padding: 0; margin: 0.3em 0; }
+.reveal ul li::before { content: "›"; color: var(--mint); margin-right: 0.4em; font-weight: 500; }
+.reveal ul ul li::before { content: "·"; color: var(--text-dim); }
+.reveal a { color: var(--mint); text-decoration: none; border-bottom: 1px solid var(--mint-dim); }
+.reveal .slide-number { color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 0.5em; }
+.reveal .progress { color: var(--mint); height: 3px; }
+
+/* ── Section dividers ─────────────────────────────────────────────── */
+.section-slide { background: var(--navy-dim) !important; }
+.section-slide h2 { font-size: 1.9em; color: var(--text); }
+.section-num {
+  display: block;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.45em;
+  color: var(--mint);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 0.6em;
+}
+
+/* ── Layout ───────────────────────────────────────────────────────── */
+.cols { display: grid; gap: 1.2em; }
+.cols-2    { grid-template-columns: 1fr 1fr; }
+.cols-3    { grid-template-columns: 1fr 1fr 1fr; }
+.cols-6040 { grid-template-columns: 60fr 40fr; }
+.cols-4060 { grid-template-columns: 40fr 60fr; }
+
+/* ── Cards ────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65em 0.9em;
+  font-size: 0.76em;
+}
+.card-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 0.4em;
+}
+.card.gold   { border-color: var(--gold-dim);   background: #1a160a; }
+.card.navy   { border-color: var(--navy-dim);   background: #0e1420; }
+.card.red    { border-color: var(--red-dim);    background: #1a0d0d; }
+.card.green  { border-color: var(--green-dim);  background: #0d1a0f; }
+.card.purple { border-color: var(--purple-dim); background: #180d2a; }
+.card.mint   { border-color: var(--mint-dim);   background: #0d1e1c; }
+
+/* ── Highlight boxes ──────────────────────────────────────────────── */
+.hbox {
+  background: var(--surface);
+  border-left: 3px solid var(--mint);
+  border-radius: 6px;
+  padding: 0.55em 0.9em;
+  font-size: 0.76em;
+}
+.hbox.gold   { border-left-color: var(--gold); }
+.hbox.red    { border-left-color: var(--red);  }
+.hbox.purple { border-left-color: var(--purple); }
+
+/* ── Formula ──────────────────────────────────────────────────────── */
+.formula {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.82em;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4em 0.8em;
+  margin: 0.4em 0;
+  color: var(--gold);
+}
+
+/* ── Pills ────────────────────────────────────────────────────────── */
+.pill {
+  display: inline-block;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.32em;
+  padding: 0.25em 0.8em;
+  border-radius: 99px;
+  margin: 0.15em;
+  letter-spacing: 0.08em;
+}
+.pill-mint   { background: var(--mint-dim);   color: var(--mint);   border: 1px solid var(--mint); }
+.pill-gold   { background: var(--gold-dim);   color: var(--gold);   border: 1px solid var(--gold); }
+.pill-navy   { background: var(--navy-dim);   color: var(--navy);   border: 1px solid var(--navy); }
+.pill-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid var(--purple); }
+.pill-red    { background: var(--red-dim);    color: var(--red);    border: 1px solid var(--red); }
+
+/* ── Title slide ──────────────────────────────────────────────────── */
+.title-meta {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.36em;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 0.9em;
+}
+.title-tag {
+  display: inline-block;
+  border: 1px solid var(--mint-dim);
+  color: var(--mint);
+  padding: 0.18em 0.7em;
+  border-radius: 4px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.36em;
+  letter-spacing: 0.08em;
+  margin: 0.2em;
+}
+
+/* ── RNN unrolled diagram ─────────────────────────────────────────── */
+.rnn-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3em;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62em;
+}
+.rnn-box {
+  background: var(--navy-dim);
+  border: 1px solid var(--navy);
+  border-radius: 6px;
+  padding: 0.4em 0.6em;
+  text-align: center;
+  min-width: 3.2em;
+}
+.rnn-box.active { background: var(--mint-dim); border-color: var(--mint); color: var(--mint); }
+.rnn-arrow { color: var(--text-dim); font-size: 1.1em; }
+.rnn-label { color: var(--text-dim); font-size: 0.85em; text-align: center; margin-top: 0.3em; }
+
+/* ── Comparison table ─────────────────────────────────────────────── */
+.cmp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.68em;
+}
+.cmp-table th {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.85em;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  padding: 0.4em 0.6em;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.cmp-table td {
+  padding: 0.5em 0.6em;
+  border-bottom: 1px solid var(--border);
+}
+.cmp-table tr:last-child td { border-bottom: none; }
+.cmp-table .good { color: var(--green); }
+.cmp-table .bad  { color: var(--red); }
+.cmp-table .highlight-row td { background: var(--mint-dim); }
+
+/* ── Big quote ────────────────────────────────────────────────────── */
+.big-quote {
+  font-family: 'DM Serif Display', serif;
+  font-style: italic;
+  font-size: 1.15em;
+  color: var(--gold);
+  line-height: 1.35;
+  padding: 0.4em 0;
+}
+
+/* ── Gate diagram boxes ───────────────────────────────────────────── */
+.gate-box {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 0.5em 0.7em;
+  font-size: 0.72em;
+  border-left: 3px solid var(--gold);
+}
+.gate-box.forget { border-left-color: var(--red); }
+.gate-box.input  { border-left-color: var(--mint); }
+.gate-box.output { border-left-color: var(--navy); }
+.gate-name {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.3em;
+}
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ═══════════════════════════════════════════════════════ TITLE -->
+<section>
+  <div class="title-meta">Natural Language Processing · Session 05 / 08</div>
+  <h1>Sequence Models</h1>
+  <h3 style="margin-top:0.2em;">RNNs · Vanishing Gradients · LSTMs · Text as Sequence</h3>
+  <p style="color:var(--text-dim); font-size:0.55em; margin-top:1.2em;">
+    Oscar de Felice &nbsp;·&nbsp; Head of AI, WhiteLab Genomics
+  </p>
+  <div style="margin-top:1em;">
+    <span class="title-tag">word order</span>
+    <span class="title-tag">hidden state</span>
+    <span class="title-tag">bptt</span>
+    <span class="title-tag">vanishing gradient</span>
+    <span class="title-tag">lstm gates</span>
+    <span class="title-tag">cell state</span>
+    <span class="title-tag">padding</span>
+    <span class="title-tag">keras embedding</span>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ AGENDA -->
+<section>
+  <h2>Today — ~60 min theory</h2>
+  <div class="cols cols-2" style="font-size:0.76em; margin-top:0.4em;">
+    <div>
+      <div class="card" style="margin-bottom:0.55em;">
+        <div class="card-title">00 · Recap and motivation</div>
+        Why mean pooling fails. The case for word order.
+      </div>
+      <div class="card" style="margin-bottom:0.55em;">
+        <div class="card-title">01 · The RNN idea</div>
+        Hidden state, unrolled computation, text as a sequence.
+      </div>
+      <div class="card" style="margin-bottom:0.55em;">
+        <div class="card-title">02 · Vanishing gradients</div>
+        Why plain RNNs struggle with long sequences. BPTT intuition.
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:0.55em;">
+        <div class="card-title">03 · LSTM</div>
+        Cell state, three gates, long-range memory.
+      </div>
+      <div class="card" style="margin-bottom:0.55em;">
+        <div class="card-title">04 · From tokens to sequences in Keras</div>
+        Tokenizer, padding, Embedding layer.
+      </div>
+      <div class="card" style="margin-bottom:0.55em;">
+        <div class="card-title">05 · Limits and what's next</div>
+        Parallelism problem. Why Transformers win.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SEC 00 RECAP -->
+<section class="section-slide">
+  <span class="section-num">00</span>
+  <h2>Where we are</h2>
+  <p style="color:var(--text-dim); font-size:0.58em;">Sessions 1–4 built powerful classifiers. They all share one blind spot.</p>
+</section>
+
+<section>
+  <h2>The blind spot of everything we have built</h2>
+  <div style="font-size:0.8em;">
+    <div class="hbox red" style="margin-bottom:0.7em;">
+      <strong>Every model from S01 to S04 is a bag of words.</strong>
+      TF-IDF, Naive Bayes, Logistic Regression, GloVe mean pool —
+      they all treat a document as an unordered set of tokens.
+      Word order is completely discarded.
+    </div>
+    <div class="cols cols-2">
+      <div class="card red" style="margin-bottom:0.5em;">
+        <div class="card-title">Word order is lost — examples</div>
+        "The dog bit the man." → same vector as "The man bit the dog."<br/><br/>
+        "Not feeling happy." → dominated by <em>happy</em> → predicted as positive.<br/><br/>
+        "I used to love this restaurant." → <em>love</em> fires positive despite <em>used to</em>.<br/><br/>
+        "The food was good but the service was terrible." → mixed signal, wrong prediction.
+      </div>
+      <div>
+        <div class="card gold" style="margin-bottom:0.5em;">
+          <div class="card-title">What we need</div>
+          A model that reads text <em>left to right</em>,
+          one word at a time, remembering what came before.<br/><br/>
+          The representation of word <em>t</em> should depend on
+          words 1 through <em>t−1</em>. Context matters.
+        </div>
+        <div class="hbox" style="margin-top:0.5em;">
+          <strong>This is exactly what a Recurrent Neural Network does.</strong>
+          It processes sequences token by token,
+          maintaining a running summary — the <em>hidden state</em> — of everything seen so far.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Negation — a concrete failure</h2>
+  <div style="font-size:0.78em;">
+    <div class="hbox gold" style="margin-bottom:0.6em;">
+      Negation is one of the clearest cases where word order matters.
+      "Not happy" and "happy" have opposite meanings but almost identical bag-of-words representations.
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card red" style="margin-bottom:0.5em;">
+          <div class="card-title">GloVe mean pool — what it sees</div>
+          Sentence: <code>"not feeling happy"</code><br/><br/>
+          Vectors: <code>v(not)</code>, <code>v(feeling)</code>, <code>v(happy)</code><br/>
+          Mean: dominated by <code>v(happy)</code> — strong positive signal<br/><br/>
+          Prediction: <span style="color:var(--red);">positive</span> — wrong.
+        </div>
+        <div class="card red">
+          <div class="card-title">TF-IDF + LR — what it sees</div>
+          Features: <code>not</code>=1, <code>feeling</code>=1, <code>happy</code>=1<br/>
+          The coefficient learned for <code>happy</code> is strongly positive.<br/>
+          The model may have seen "not happy" rarely in training.<br/><br/>
+          Prediction: <span style="color:var(--red);">often wrong</span> on negation.
+        </div>
+      </div>
+      <div>
+        <div class="card mint">
+          <div class="card-title">What an RNN/LSTM sees</div>
+          Step 1: reads <code>not</code> → hidden state encodes negation context<br/>
+          Step 2: reads <code>feeling</code> → updates hidden state<br/>
+          Step 3: reads <code>happy</code> → <strong>in the context of <em>not</em></strong><br/><br/>
+          The hidden state at step 3 carries the information
+          that <em>not</em> was seen earlier.
+          With enough training data, the model learns that
+          <em>not + positive word = negative sentiment</em>.<br/><br/>
+          Prediction: <span style="color:var(--green);">negative</span> — correct.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SEC 01 RNN -->
+<section class="section-slide">
+  <span class="section-num">01</span>
+  <h2>The RNN Idea</h2>
+  <p style="color:var(--text-dim); font-size:0.58em;">One step at a time. One vector summarises the past.</p>
+</section>
+
+<section>
+  <h2>Recurrent neural network — intuition</h2>
+  <div style="font-size:0.78em;">
+    <div class="hbox" style="margin-bottom:0.6em;">
+      <strong>Key idea:</strong> reuse the same weight matrix at every step.
+      The network's weights do not change across time steps —
+      the same transformation is applied again and again, once per token.
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">Folded view (one step)</div>
+          <div style="text-align:center; margin: 0.6em 0;">
+            <div style="font-family:'DM Mono',monospace; font-size:0.85em; line-height:2;">
+              x<sub>t</sub> ──┐<br/>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─→ <span style="background:var(--navy-dim);padding:0.1em 0.4em;border-radius:4px;">RNN cell</span> → h<sub>t</sub><br/>
+              h<sub>t-1</sub> ─┘
+            </div>
+          </div>
+          The cell takes the current token <code>x_t</code>
+          and the previous hidden state <code>h_{t-1}</code>,
+          and produces the new hidden state <code>h_t</code>.
+        </div>
+        <div class="card gold">
+          <div class="card-title">The update equation</div>
+          <div class="formula">h_t = tanh( W_h · h_{t-1} + W_x · x_t + b )</div>
+          <code>W_h</code>: hidden-to-hidden weights<br/>
+          <code>W_x</code>: input-to-hidden weights<br/>
+          <code>b</code>: bias<br/>
+          <code>tanh</code>: squashes output to (−1, +1)
+        </div>
+      </div>
+      <div>
+        <div class="card navy">
+          <div class="card-title">Unrolled view — sentence: "the cat sat"</div>
+          <div class="rnn-row" style="margin: 0.8em 0 0.4em;">
+            <div style="text-align:center;">
+              <div class="rnn-box">h<sub>0</sub></div>
+              <div class="rnn-label">start</div>
+            </div>
+            <div class="rnn-arrow">→</div>
+            <div style="text-align:center;">
+              <div class="rnn-box active">h<sub>1</sub></div>
+              <div class="rnn-label" style="color:var(--mint);">the</div>
+            </div>
+            <div class="rnn-arrow">→</div>
+            <div style="text-align:center;">
+              <div class="rnn-box active">h<sub>2</sub></div>
+              <div class="rnn-label" style="color:var(--mint);">cat</div>
+            </div>
+            <div class="rnn-arrow">→</div>
+            <div style="text-align:center;">
+              <div class="rnn-box active">h<sub>3</sub></div>
+              <div class="rnn-label" style="color:var(--mint);">sat</div>
+            </div>
+            <div class="rnn-arrow">→</div>
+            <div style="text-align:center;">
+              <div class="rnn-box" style="border-color:var(--gold); background:var(--gold-dim);">ŷ</div>
+              <div class="rnn-label" style="color:var(--gold);">output</div>
+            </div>
+          </div>
+          <p style="margin-top:0.5em;">
+            At each step the <strong>same weights</strong> are used.
+            <code>h_3</code> summarises the entire sentence
+            and is fed to a Dense + softmax for classification.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>RNN — unrolled computation</h2>
+  <p style="font-size:0.58em; color:#8b949e; margin:0 0 0.3em 0;">The same cell, applied six times. One hidden state carries the past forward.</p>
+  <svg viewBox="0 0 680 240" style="width:100%; display:block; overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arr1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="#4a5568" stroke-width="1.5" stroke-linecap="round"/>
+      </marker>
+      <marker id="arr-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="#56c8ba" stroke-width="1.5" stroke-linecap="round"/>
+      </marker>
+      <marker id="arr-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+      </marker>
+    </defs>
+
+    <!-- h0 -->
+    <rect x="20" y="112" width="50" height="36" rx="6" fill="#161b22" stroke="#30363d" stroke-width="0.8"/>
+    <text x="45" y="134" text-anchor="middle" font-family="monospace" font-size="13" fill="#8b949e">h₀</text>
+    <text x="45" y="162" text-anchor="middle" font-family="monospace" font-size="11" fill="#4a5568">start</text>
+
+    <!-- Arrow h0→c1 -->
+    <line x1="70" y1="130" x2="90" y2="130" stroke="#4a5568" stroke-width="1.2" marker-end="url(#arr1)"/>
+
+    <!-- Cell 1: the -->
+    <rect x="92" y="112" width="54" height="36" rx="6" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.8"/>
+    <text x="119" y="134" text-anchor="middle" font-family="monospace" font-size="12" fill="#56c8ba">cell</text>
+    <line x1="119" y1="112" x2="119" y2="82" stroke="#4a5568" stroke-width="0.8" marker-end="url(#arr1)"/>
+    <rect x="92" y="48" width="54" height="30" rx="5" fill="#2d1a40" stroke="#c084fc" stroke-width="0.7"/>
+    <text x="119" y="67" text-anchor="middle" font-family="monospace" font-size="12" fill="#c084fc">h₁</text>
+    <line x1="119" y1="148" x2="119" y2="168" stroke="#4a5568" stroke-width="0.8" marker-end="url(#arr1)"/>
+    <text x="119" y="183" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#8b949e">the</text>
+
+    <!-- Arrow c1→c2 -->
+    <line x1="146" y1="130" x2="166" y2="130" stroke="#4a5568" stroke-width="1.2" marker-end="url(#arr1)"/>
+
+    <!-- Cell 2: cat -->
+    <rect x="168" y="112" width="54" height="36" rx="6" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.8"/>
+    <text x="195" y="134" text-anchor="middle" font-family="monospace" font-size="12" fill="#56c8ba">cell</text>
+    <line x1="195" y1="112" x2="195" y2="82" stroke="#4a5568" stroke-width="0.8" marker-end="url(#arr1)"/>
+    <rect x="168" y="48" width="54" height="30" rx="5" fill="#2d1a40" stroke="#c084fc" stroke-width="0.7"/>
+    <text x="195" y="67" text-anchor="middle" font-family="monospace" font-size="12" fill="#c084fc">h₂</text>
+    <line x1="195" y1="148" x2="195" y2="168" stroke="#4a5568" stroke-width="0.8" marker-end="url(#arr1)"/>
+    <text x="195" y="183" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#8b949e">cat</text>
+
+    <!-- Arrow c2→c3 -->
+    <line x1="222" y1="130" x2="242" y2="130" stroke="#4a5568" stroke-width="1.2" marker-end="url(#arr1)"/>
+
+    <!-- Cell 3: sat (highlighted amber) -->
+    <rect x="244" y="112" width="54" height="36" rx="6" fill="#3d2e0f" stroke="#e8c47a" stroke-width="1.2"/>
+    <text x="271" y="134" text-anchor="middle" font-family="monospace" font-size="12" fill="#e8c47a">cell</text>
+    <line x1="271" y1="112" x2="271" y2="82" stroke="#e8c47a" stroke-width="1.0" marker-end="url(#arr-amber)"/>
+    <rect x="244" y="48" width="54" height="30" rx="5" fill="#2d1a40" stroke="#c084fc" stroke-width="0.7"/>
+    <text x="271" y="67" text-anchor="middle" font-family="monospace" font-size="12" fill="#c084fc">h₃</text>
+    <line x1="271" y1="148" x2="271" y2="168" stroke="#e8c47a" stroke-width="1.0" marker-end="url(#arr-amber)"/>
+    <text x="271" y="183" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="#e8c47a">sat</text>
+
+    <!-- Arrow c3→c4 -->
+    <line x1="298" y1="130" x2="318" y2="130" stroke="#4a5568" stroke-width="1.2" marker-end="url(#arr1)"/>
+
+    <!-- Cell 4: on -->
+    <rect x="320" y="112" width="54" height="36" rx="6" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.8"/>
+    <text x="347" y="134" text-anchor="middle" font-family="monospace" font-size="12" fill="#56c8ba">cell</text>
+    <line x1="347" y1="112" x2="347" y2="82" stroke="#4a5568" stroke-width="0.8" marker-end="url(#arr1)"/>
+    <rect x="320" y="48" width="54" height="30" rx="5" fill="#2d1a40" stroke="#c084fc" stroke-width="0.7"/>
+    <text x="347" y="67" text-anchor="middle" font-family="monospace" font-size="12" fill="#c084fc">h₄</text>
+    <line x1="347" y1="148" x2="347" y2="168" stroke="#4a5568" stroke-width="0.8" marker-end="url(#arr1)"/>
+    <text x="347" y="183" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#8b949e">on</text>
+
+    <!-- Arrow c4→c5 -->
+    <line x1="374" y1="130" x2="394" y2="130" stroke="#4a5568" stroke-width="1.2" marker-end="url(#arr1)"/>
+
+    <!-- Cell 5: the -->
+    <rect x="396" y="112" width="54" height="36" rx="6" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.8"/>
+    <text x="423" y="134" text-anchor="middle" font-family="monospace" font-size="12" fill="#56c8ba">cell</text>
+    <line x1="423" y1="112" x2="423" y2="82" stroke="#4a5568" stroke-width="0.8" marker-end="url(#arr1)"/>
+    <rect x="396" y="48" width="54" height="30" rx="5" fill="#2d1a40" stroke="#c084fc" stroke-width="0.7"/>
+    <text x="423" y="67" text-anchor="middle" font-family="monospace" font-size="12" fill="#c084fc">h₅</text>
+    <line x1="423" y1="148" x2="423" y2="168" stroke="#4a5568" stroke-width="0.8" marker-end="url(#arr1)"/>
+    <text x="423" y="183" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#8b949e">the</text>
+
+    <!-- Arrow c5→c6 -->
+    <line x1="450" y1="130" x2="470" y2="130" stroke="#4a5568" stroke-width="1.2" marker-end="url(#arr1)"/>
+
+    <!-- Cell 6: mat -->
+    <rect x="472" y="112" width="54" height="36" rx="6" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.8"/>
+    <text x="499" y="134" text-anchor="middle" font-family="monospace" font-size="12" fill="#56c8ba">cell</text>
+    <line x1="499" y1="112" x2="499" y2="82" stroke="#4a5568" stroke-width="0.8" marker-end="url(#arr1)"/>
+    <rect x="472" y="48" width="54" height="30" rx="5" fill="#2d1a40" stroke="#c084fc" stroke-width="0.7"/>
+    <text x="499" y="67" text-anchor="middle" font-family="monospace" font-size="12" fill="#c084fc">h₆</text>
+    <line x1="499" y1="148" x2="499" y2="168" stroke="#4a5568" stroke-width="0.8" marker-end="url(#arr1)"/>
+    <text x="499" y="183" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#8b949e">mat</text>
+
+    <!-- Arrow c6→output -->
+    <line x1="526" y1="130" x2="546" y2="130" stroke="#4a5568" stroke-width="1.2" marker-end="url(#arr1)"/>
+
+    <!-- Output: Dense+σ -->
+    <rect x="548" y="112" width="110" height="36" rx="6" fill="#3d1a0f" stroke="#f0956a" stroke-width="0.8"/>
+    <text x="603" y="128" text-anchor="middle" font-family="monospace" font-size="12" fill="#f0956a">Dense + σ</text>
+    <text x="603" y="144" text-anchor="middle" font-family="monospace" font-size="11" fill="#f0956a">ŷ (class)</text>
+
+    <!-- Shared-weights note -->
+    <rect x="92" y="200" width="432" height="26" rx="5" fill="#161b22" stroke="#30363d" stroke-width="0.5" stroke-dasharray="3 3"/>
+    <text x="308" y="217" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#8b949e">W_h and W_x are shared across all 6 steps — one set of weights, reused at every position</text>
+
+    <!-- Legend -->
+    <rect x="96" y="234" width="10" height="10" rx="2" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.7"/>
+    <text x="112" y="243" font-family="sans-serif" font-size="11" fill="#8b949e">RNN cell</text>
+    <rect x="184" y="234" width="10" height="10" rx="2" fill="#2d1a40" stroke="#c084fc" stroke-width="0.7"/>
+    <text x="200" y="243" font-family="sans-serif" font-size="11" fill="#8b949e">Hidden state h_t</text>
+    <rect x="316" y="234" width="10" height="10" rx="2" fill="#3d2e0f" stroke="#e8c47a" stroke-width="0.7"/>
+    <text x="332" y="243" font-family="sans-serif" font-size="11" fill="#8b949e">Key content word</text>
+    <rect x="460" y="234" width="10" height="10" rx="2" fill="#3d1a0f" stroke="#f0956a" stroke-width="0.7"/>
+    <text x="476" y="243" font-family="sans-serif" font-size="11" fill="#8b949e">Output layer</text>
+  </svg>
+</section>
+
+
+
+
+
+<section>
+  <h2>From text to sequences — the pipeline</h2>
+  <div style="font-size:0.76em;">
+    <div class="hbox" style="margin-bottom:0.5em;">
+      Before feeding text to an RNN we need to convert it to a fixed-length integer sequence.
+      Keras provides everything we need.
+    </div>
+    <div class="cols cols-3" style="margin-bottom:0.5em;">
+      <div class="card">
+        <div class="card-title">Step 1 — Tokenize</div>
+        Assign an integer index to each word by frequency rank.<br/><br/>
+        <code>"the"</code> → 1 (most frequent)<br/>
+        <code>"cat"</code> → 42<br/>
+        <code>"sat"</code> → 78<br/><br/>
+        <code>Tokenizer(num_words=1000)</code> keeps the top 1000 words.
+        Rare words → unknown token.
+      </div>
+      <div class="card gold">
+        <div class="card-title">Step 2 — Pad</div>
+        All sequences must have the same length for batching.<br/><br/>
+        <code>"the cat sat"</code> → <code>[1, 42, 78]</code><br/>
+        padded to length 10 → <code>[0, 0, 0, 0, 0, 0, 0, 1, 42, 78]</code><br/><br/>
+        Pre-padding (zeros at the start) is preferred for RNNs:
+        the last hidden state sees real tokens, not padding.
+      </div>
+      <div class="card navy">
+        <div class="card-title">Step 3 — Embed</div>
+        Map each integer index to a dense vector.<br/><br/>
+        <code>Embedding(vocab_size, dim)</code><br/><br/>
+        This is a learnable lookup table.
+        Index 42 → a 16-dimensional vector, updated during training.<br/><br/>
+        Alternatively: load pre-trained GloVe weights and freeze them.
+      </div>
+    </div>
+<pre><code class="language-python">from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+
+tokenizer = Tokenizer(num_words=1000, oov_token="&lt;OOV&gt;")
+tokenizer.fit_on_texts(train_texts)
+
+train_seqs = tokenizer.texts_to_sequences(train_texts)
+X_train = pad_sequences(train_seqs, maxlen=50,
+                        padding="pre", truncating="post")</code></pre>
+  </div>
+</section>
+
+<section>
+  <h2>Text pipeline — step by step</h2>
+  <p style="font-size:0.58em; color:#8b949e; margin:0 0 0.3em 0;">From a raw string to a tensor the LSTM can consume.</p>
+  <svg viewBox="0 0 680 260" style="width:100%; display:block;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="ap" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="#4a5568" stroke-width="1.5" stroke-linecap="round"/>
+      </marker>
+    </defs>
+
+    <!-- Step boxes row -->
+    <!-- ① Raw text -->
+    <rect x="18" y="28" width="130" height="52" rx="7" fill="#161b22" stroke="#30363d" stroke-width="0.8"/>
+    <text x="83" y="50" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="#e6edf3">① Raw text</text>
+    <text x="83" y="68" text-anchor="middle" font-family="monospace" font-size="11" fill="#8b949e">"WINNER! Call now"</text>
+
+    <!-- Arrow + label -->
+    <line x1="148" y1="54" x2="166" y2="54" stroke="#4a5568" stroke-width="1.2" marker-end="url(#ap)"/>
+    <text x="157" y="46" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#4a5568">Tokenizer</text>
+
+    <!-- ② Indices -->
+    <rect x="168" y="28" width="128" height="52" rx="7" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.8"/>
+    <text x="232" y="50" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="#56c8ba">② Indices</text>
+    <text x="232" y="68" text-anchor="middle" font-family="monospace" font-size="11" fill="#56c8ba">[42, 1, 87]</text>
+
+    <!-- Arrow -->
+    <line x1="296" y1="54" x2="314" y2="54" stroke="#4a5568" stroke-width="1.2" marker-end="url(#ap)"/>
+    <text x="305" y="46" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#4a5568">pad_sequences</text>
+    <text x="305" y="74" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#4a5568">maxlen=6</text>
+
+    <!-- ③ Padded -->
+    <rect x="316" y="28" width="148" height="52" rx="7" fill="#3d2e0f" stroke="#e8c47a" stroke-width="0.8"/>
+    <text x="390" y="50" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="#e8c47a">③ Padded</text>
+    <text x="390" y="68" text-anchor="middle" font-family="monospace" font-size="11" fill="#e8c47a">[0, 0, 0, 42, 1, 87]</text>
+
+    <!-- Arrow -->
+    <line x1="464" y1="54" x2="482" y2="54" stroke="#4a5568" stroke-width="1.2" marker-end="url(#ap)"/>
+    <text x="473" y="46" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#4a5568">Embedding</text>
+    <text x="473" y="74" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#4a5568">lookup</text>
+
+    <!-- ④ Tensor -->
+    <rect x="484" y="28" width="178" height="52" rx="7" fill="#2d1a40" stroke="#c084fc" stroke-width="0.8"/>
+    <text x="573" y="50" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="#c084fc">④ Embedded</text>
+    <text x="573" y="68" text-anchor="middle" font-family="monospace" font-size="11" fill="#c084fc">shape (6, 16) → LSTM</text>
+
+    <!-- Padded sequence visual (6 small boxes) -->
+    <text x="340" y="110" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#8b949e">Padded integer sequence (length 6):</text>
+    <!-- 3 pad boxes (gray) -->
+    <rect x="80"  y="120" width="52" height="34" rx="4" fill="#161b22" stroke="#30363d" stroke-width="0.6" opacity="0.5"/>
+    <text x="106" y="141" text-anchor="middle" font-family="monospace" font-size="13" fill="#4a5568">0</text>
+    <rect x="138" y="120" width="52" height="34" rx="4" fill="#161b22" stroke="#30363d" stroke-width="0.6" opacity="0.5"/>
+    <text x="164" y="141" text-anchor="middle" font-family="monospace" font-size="13" fill="#4a5568">0</text>
+    <rect x="196" y="120" width="52" height="34" rx="4" fill="#161b22" stroke="#30363d" stroke-width="0.6" opacity="0.5"/>
+    <text x="222" y="141" text-anchor="middle" font-family="monospace" font-size="13" fill="#4a5568">0</text>
+    <!-- 3 real-token boxes (teal) -->
+    <rect x="254" y="120" width="52" height="34" rx="4" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.8"/>
+    <text x="280" y="141" text-anchor="middle" font-family="monospace" font-size="13" fill="#56c8ba">42</text>
+    <rect x="312" y="120" width="52" height="34" rx="4" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.8"/>
+    <text x="338" y="141" text-anchor="middle" font-family="monospace" font-size="13" fill="#56c8ba">1</text>
+    <rect x="370" y="120" width="52" height="34" rx="4" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.8"/>
+    <text x="396" y="141" text-anchor="middle" font-family="monospace" font-size="13" fill="#56c8ba">87</text>
+
+    <text x="164" y="168" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#4a5568">← padding (zeros)</text>
+    <text x="338" y="168" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#56c8ba">real tokens →</text>
+
+    <!-- Embedding vectors visual (same 6 positions, now tall rects) -->
+    <text x="340" y="190" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#8b949e">After Embedding: each index → 16-dim dense vector</text>
+    <rect x="80"  y="200" width="52" height="46" rx="3" fill="#161b22" stroke="#30363d" stroke-width="0.5" opacity="0.4"/>
+    <rect x="138" y="200" width="52" height="46" rx="3" fill="#161b22" stroke="#30363d" stroke-width="0.5" opacity="0.4"/>
+    <rect x="196" y="200" width="52" height="46" rx="3" fill="#161b22" stroke="#30363d" stroke-width="0.5" opacity="0.4"/>
+    <rect x="254" y="200" width="52" height="46" rx="3" fill="#2d1a40" stroke="#c084fc" stroke-width="0.7"/>
+    <text x="280" y="227" text-anchor="middle" font-family="monospace" font-size="10" fill="#c084fc">16d</text>
+    <rect x="312" y="200" width="52" height="46" rx="3" fill="#2d1a40" stroke="#c084fc" stroke-width="0.7"/>
+    <text x="338" y="227" text-anchor="middle" font-family="monospace" font-size="10" fill="#c084fc">16d</text>
+    <rect x="370" y="200" width="52" height="46" rx="3" fill="#2d1a40" stroke="#c084fc" stroke-width="0.7"/>
+    <text x="396" y="227" text-anchor="middle" font-family="monospace" font-size="10" fill="#c084fc">16d</text>
+    <text x="460" y="222" font-family="sans-serif" font-size="12" fill="#8b949e">→ fed to LSTM</text>
+    <text x="460" y="238" font-family="sans-serif" font-size="11" fill="#4a5568">one vector / time step</text>
+  </svg>
+</section>
+
+
+
+
+
+<section>
+  <h2>RNN for classification — Keras</h2>
+  <div style="font-size:0.76em;">
+    <div class="cols cols-6040">
+      <div>
+<pre><code class="language-python">from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import (
+    Embedding, SimpleRNN, Dense
+)
+
+model = Sequential([
+    # Learnable embedding lookup
+    Embedding(
+        input_dim=1000,    # vocab size
+        output_dim=16,     # embedding dim
+        input_length=50,   # sequence length
+    ),
+    # RNN: reads left to right, returns
+    # only the last hidden state
+    SimpleRNN(units=32),
+    # Binary classification
+    Dense(1, activation="sigmoid"),
+])
+
+model.compile(
+    loss="binary_crossentropy",
+    optimizer="adam",
+    metrics=["accuracy"],
+)
+model.summary()</code></pre>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">Parameter count</div>
+          Embedding: 1000 × 16 = 16,000<br/>
+          SimpleRNN: (16+32+1) × 32 = 1,568<br/>
+          Dense: (32+1) × 1 = 33<br/>
+          <strong>Total: 17,601</strong><br/><br/>
+          <span style="color:var(--text-dim);">Compare: TF-IDF + LR on 10K features = 10,004 params but 99% are sparse.</span>
+        </div>
+        <div class="card gold">
+          <div class="card-title">Why SimpleRNN?</div>
+          Pedagogically simple: one weight matrix, one equation.<br/><br/>
+          In practice it fails on long sequences — the vanishing gradient problem.
+          Section 02 explains why, and Section 03 fixes it with LSTM.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SEC 02 VANISHING -->
+<section class="section-slide">
+  <span class="section-num">02</span>
+  <h2>Vanishing Gradients</h2>
+  <p style="color:var(--text-dim); font-size:0.58em;">Why plain RNNs forget. Why LSTM was invented.</p>
+</section>
+
+<section>
+  <h2>Backpropagation through time</h2>
+  <div style="font-size:0.78em;">
+    <div class="hbox" style="margin-bottom:0.5em;">
+      Training an RNN means computing gradients all the way back through every time step.
+      This is called <strong>Backpropagation Through Time (BPTT)</strong>.
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">The chain rule unrolled</div>
+          The loss at step <em>T</em> depends on <code>h_T</code>,
+          which depends on <code>h_{T-1}</code>,
+          which depends on <code>h_{T-2}</code>, and so on.<br/><br/>
+          The gradient of the loss w.r.t. <code>h_0</code> is a product of <em>T</em> Jacobians:
+          <div class="formula">∂L/∂h_0 = (∂h_T/∂h_{T-1}) · (∂h_{T-1}/∂h_{T-2}) · … · (∂h_1/∂h_0)</div>
+          Each factor is the derivative of <code>tanh</code>,
+          multiplied by the weight matrix <code>W_h</code>.
+        </div>
+        <div class="card red">
+          <div class="card-title">What goes wrong</div>
+          The derivative of <code>tanh</code> is at most 1, usually much less (near 0 in the saturated regions).<br/><br/>
+          Multiply 50 numbers each less than 1 together:
+          <code>0.8 × 0.8 × … × 0.8 (×50) ≈ 0.00001</code><br/><br/>
+          The gradient at step 0 is essentially zero.
+          The network cannot learn from information early in the sequence.
+          <span style="color:var(--red);">Long-range dependencies are lost.</span>
+        </div>
+      </div>
+      <div>
+        <div class="card gold">
+          <div class="card-title">Concrete example</div>
+          Sentence: "The <em>cat</em>, which had been sleeping all afternoon in the warm sun by the window, <em>sat</em> on the mat."<br/><br/>
+          The subject <code>cat</code> is 15 tokens before the verb <code>sat</code>.
+          By the time the gradient flows back to step 1,
+          it has been multiplied by 15 small numbers.<br/><br/>
+          SimpleRNN cannot reliably link <code>cat</code> (singular)
+          to the agreement of <code>sat</code>. LSTM can.
+        </div>
+        <div class="hbox" style="margin-top:0.5em;">
+          <strong>Note:</strong> for <em>short</em> sequences (SMS messages, tweets, short sentences)
+          vanishing gradients are less of a problem.
+          SimpleRNN works reasonably well for spam detection.
+          It fails on long documents — news articles, novels, code.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Vanishing gradient — visualised</h2>
+  <p style="font-size:0.58em; color:#8b949e; margin:0 0 0.3em 0;">Gradient flows right-to-left. Each step multiplies by a number &lt; 1. The signal dies before reaching t=1.</p>
+  <svg viewBox="0 0 680 220" style="width:100%; display:block;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrl" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="#f47067" stroke-width="1.5" stroke-linecap="round"/>
+      </marker>
+      <marker id="arrg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="#4a5568" stroke-width="1.5" stroke-linecap="round"/>
+      </marker>
+    </defs>
+
+    <!-- 8 time-step boxes, evenly spaced -->
+    <!-- t=1 (leftmost, almost invisible) -->
+    <rect x="28"  y="60" width="56" height="40" rx="6" fill="#161b22" stroke="#30363d" stroke-width="0.5" opacity="0.25"/>
+    <text x="56"  y="84" text-anchor="middle" font-family="monospace" font-size="12" fill="#8b949e" opacity="0.25">t=1</text>
+    <!-- t=2 -->
+    <rect x="104" y="60" width="56" height="40" rx="6" fill="#161b22" stroke="#30363d" stroke-width="0.5" opacity="0.4"/>
+    <text x="132" y="84" text-anchor="middle" font-family="monospace" font-size="12" fill="#8b949e" opacity="0.4">t=2</text>
+    <!-- t=3 -->
+    <rect x="180" y="60" width="56" height="40" rx="6" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.5" opacity="0.5"/>
+    <text x="208" y="84" text-anchor="middle" font-family="monospace" font-size="12" fill="#56c8ba" opacity="0.55">t=3</text>
+    <!-- t=4 -->
+    <rect x="256" y="60" width="56" height="40" rx="6" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.6" opacity="0.65"/>
+    <text x="284" y="84" text-anchor="middle" font-family="monospace" font-size="12" fill="#56c8ba" opacity="0.7">t=4</text>
+    <!-- t=5 -->
+    <rect x="332" y="60" width="56" height="40" rx="6" fill="#3d2e0f" stroke="#e8c47a" stroke-width="0.7" opacity="0.7"/>
+    <text x="360" y="84" text-anchor="middle" font-family="monospace" font-size="12" fill="#e8c47a" opacity="0.75">t=5</text>
+    <!-- t=6 -->
+    <rect x="408" y="60" width="56" height="40" rx="6" fill="#3d2e0f" stroke="#e8c47a" stroke-width="0.8" opacity="0.82"/>
+    <text x="436" y="84" text-anchor="middle" font-family="monospace" font-size="12" fill="#e8c47a" opacity="0.88">t=6</text>
+    <!-- t=7 -->
+    <rect x="484" y="60" width="56" height="40" rx="6" fill="#3d1212" stroke="#f47067" stroke-width="0.9" opacity="0.9"/>
+    <text x="512" y="84" text-anchor="middle" font-family="monospace" font-size="12" fill="#f47067" opacity="0.95">t=7</text>
+    <!-- t=8 (loss, full opacity) -->
+    <rect x="560" y="56" width="72" height="48" rx="6" fill="#3d1212" stroke="#f47067" stroke-width="1.2"/>
+    <text x="596" y="77" text-anchor="middle" font-family="monospace" font-size="12" fill="#f47067">t=8</text>
+    <text x="596" y="94" text-anchor="middle" font-family="monospace" font-size="11" fill="#f47067">Loss ℒ</text>
+
+    <!-- Backward gradient arrows (left-pointing), decreasing thickness -->
+    <!-- 7→8: thick -->
+    <line x1="558" y1="80" x2="542" y2="80" stroke="#f47067" stroke-width="5" marker-end="url(#arrl)" opacity="1.0"/>
+    <!-- 6→7 -->
+    <line x1="482" y1="80" x2="466" y2="80" stroke="#f47067" stroke-width="3.8" marker-end="url(#arrl)" opacity="0.85"/>
+    <!-- 5→6 -->
+    <line x1="406" y1="80" x2="390" y2="80" stroke="#f47067" stroke-width="2.8" marker-end="url(#arrl)" opacity="0.7"/>
+    <!-- 4→5 -->
+    <line x1="330" y1="80" x2="314" y2="80" stroke="#f47067" stroke-width="1.8" marker-end="url(#arrl)" opacity="0.52"/>
+    <!-- 3→4 -->
+    <line x1="254" y1="80" x2="238" y2="80" stroke="#f47067" stroke-width="1.1" marker-end="url(#arrl)" opacity="0.35"/>
+    <!-- 2→3 -->
+    <line x1="178" y1="80" x2="162" y2="80" stroke="#f47067" stroke-width="0.6" marker-end="url(#arrl)" opacity="0.2"/>
+    <!-- 1→2 -->
+    <line x1="102" y1="80" x2="86"  y2="80" stroke="#f47067" stroke-width="0.3" marker-end="url(#arrl)" opacity="0.09"/>
+
+    <!-- ×0.64 labels above arrows -->
+    <text x="523" y="55" text-anchor="middle" font-family="monospace" font-size="10" fill="#f47067" opacity="0.9">×0.64</text>
+    <text x="447" y="55" text-anchor="middle" font-family="monospace" font-size="10" fill="#f47067" opacity="0.75">×0.64</text>
+    <text x="371" y="55" text-anchor="middle" font-family="monospace" font-size="10" fill="#f47067" opacity="0.60">×0.64</text>
+    <text x="295" y="55" text-anchor="middle" font-family="monospace" font-size="10" fill="#f47067" opacity="0.45">×0.64</text>
+    <text x="219" y="55" text-anchor="middle" font-family="monospace" font-size="10" fill="#f47067" opacity="0.30">×0.64</text>
+    <text x="143" y="55" text-anchor="middle" font-family="monospace" font-size="10" fill="#f47067" opacity="0.16">×0.64</text>
+
+    <!-- Gradient magnitude values below cells -->
+    <text x="56"  y="120" text-anchor="middle" font-family="monospace" font-size="10" fill="#8b949e" opacity="0.25">≈0.01</text>
+    <text x="132" y="120" text-anchor="middle" font-family="monospace" font-size="10" fill="#8b949e" opacity="0.4">≈0.07</text>
+    <text x="208" y="120" text-anchor="middle" font-family="monospace" font-size="10" fill="#56c8ba" opacity="0.55">≈0.17</text>
+    <text x="284" y="120" text-anchor="middle" font-family="monospace" font-size="10" fill="#56c8ba" opacity="0.7">≈0.26</text>
+    <text x="360" y="120" text-anchor="middle" font-family="monospace" font-size="10" fill="#e8c47a" opacity="0.75">≈0.41</text>
+    <text x="436" y="120" text-anchor="middle" font-family="monospace" font-size="10" fill="#e8c47a" opacity="0.88">≈0.64</text>
+    <text x="512" y="120" text-anchor="middle" font-family="monospace" font-size="10" fill="#f47067" opacity="0.95">≈1.0</text>
+    <text x="596" y="120" text-anchor="middle" font-family="monospace" font-size="10" fill="#f47067">1.00</text>
+
+    <!-- Forward direction arrow at bottom -->
+    <line x1="28" y1="148" x2="628" y2="148" stroke="#4a5568" stroke-width="0.5" stroke-dasharray="3 3" opacity="0.3"/>
+    <line x1="600" y1="144" x2="634" y2="144" stroke="#4a5568" stroke-width="1" marker-end="url(#arrg)"/>
+    <text x="648" y="149" font-family="sans-serif" font-size="11" fill="#4a5568">fwd</text>
+    <line x1="60"  y1="144" x2="26"  y2="144" stroke="#f47067" stroke-width="1" marker-end="url(#arrl)"/>
+    <text x="12" y="143" text-anchor="end" font-family="sans-serif" font-size="11" fill="#f47067">bwd</text>
+
+    <!-- Callout box -->
+    <rect x="60" y="162" width="556" height="44" rx="6" fill="#161b22" stroke="#30363d" stroke-width="0.5" stroke-dasharray="3 3"/>
+    <text x="338" y="180" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#e6edf3">0.64⁷ ≈ 0.044 — the gradient at t=1 is 23× weaker than at t=8.</text>
+    <text x="338" y="198" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#8b949e">With tanh saturation it is often 1000× weaker. Early tokens have no learning signal.</text>
+  </svg>
+</section>
+
+
+
+
+
+<!-- ═══════════════════════════════════════════════════════ SEC 03 LSTM -->
+<section class="section-slide">
+  <span class="section-num">03</span>
+  <h2>Long Short-Term Memory</h2>
+  <p style="color:var(--text-dim); font-size:0.58em;">Hochreiter &amp; Schmidhuber, 1997. The gated solution to vanishing gradients.</p>
+</section>
+
+<section>
+  <h2>The LSTM idea — a second memory channel</h2>
+  <div style="font-size:0.78em;">
+    <div class="hbox gold" style="margin-bottom:0.6em;">
+      <strong>Core insight:</strong> add a second memory channel — the <em>cell state</em> <code>c_t</code> —
+      that flows through the sequence with only small, controlled modifications.
+      Gradients can flow back through it without repeated multiplication.
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">SimpleRNN — one memory channel</div>
+          <div class="formula">h_t = tanh( W_h · h_{t-1} + W_x · x_t + b )</div>
+          One vector <code>h_t</code> does everything:
+          stores long-term context AND serves as input to the next step.
+          Gradient must flow through <code>tanh</code> repeatedly. It vanishes.
+        </div>
+        <div class="card mint">
+          <div class="card-title">LSTM — two memory channels</div>
+          <div class="formula" style="font-size:0.72em;">c_t = f_t ⊙ c_{t-1} + i_t ⊙ c̃_t   ← cell state</div>
+          <div class="formula" style="font-size:0.72em;">h_t = o_t ⊙ tanh(c_t)                ← hidden state</div>
+          The cell state <code>c_t</code> is updated by <em>addition</em> (not multiplication).
+          Gradients can flow back through it almost unchanged across many steps.
+        </div>
+      </div>
+      <div>
+        <div class="card navy">
+          <div class="card-title">An analogy — working memory vs. long-term notes</div>
+          Think of <code>h_t</code> as your <em>working memory</em> right now —
+          what you are actively thinking about.<br/><br/>
+          Think of <code>c_t</code> as a <em>notepad</em> you carry through the sequence.
+          You can write new things, erase old things, or leave it unchanged.
+          The notepad is what lets you remember something said 20 sentences ago.
+        </div>
+        <div class="hbox" style="margin-top:0.5em;">
+          Three <em>gates</em> control what gets written, erased, and read from the notepad.
+          Each gate is a vector of values between 0 and 1,
+          learned by the network from data.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The three gates</h2>
+  <div style="font-size:0.76em; margin-top:0.2em;">
+    <div class="cols cols-3" style="margin-bottom:0.6em;">
+      <div class="gate-box forget">
+        <div class="gate-name" style="color:var(--red);">Forget gate f_t</div>
+        <div class="formula" style="font-size:0.85em;">f_t = σ( W_f · [h_{t-1}, x_t] + b_f )</div>
+        <strong>Decides what to erase</strong> from the cell state.<br/><br/>
+        Values near 0 → erase that dimension.<br/>
+        Values near 1 → keep that dimension.<br/><br/>
+        Example: when the subject of a sentence changes,
+        the forget gate clears the old subject from memory.
+      </div>
+      <div class="gate-box input">
+        <div class="gate-name" style="color:var(--mint);">Input gate i_t</div>
+        <div class="formula" style="font-size:0.85em;">i_t = σ( W_i · [h_{t-1}, x_t] + b_i )</div>
+        <div class="formula" style="font-size:0.85em;">c̃_t = tanh( W_c · [h_{t-1}, x_t] + b_c )</div>
+        <strong>Decides what to write</strong> into the cell state.<br/><br/>
+        <code>i_t</code> controls how much of the candidate <code>c̃_t</code> to add.<br/><br/>
+        Example: when a key fact appears (a name, a negation),
+        the input gate writes it into the cell state.
+      </div>
+      <div class="gate-box output">
+        <div class="gate-name" style="color:var(--navy);">Output gate o_t</div>
+        <div class="formula" style="font-size:0.85em;">o_t = σ( W_o · [h_{t-1}, x_t] + b_o )</div>
+        <div class="formula" style="font-size:0.85em;">h_t = o_t ⊙ tanh( c_t )</div>
+        <strong>Decides what to expose</strong> from the cell state as the hidden state.<br/><br/>
+        The cell may store many things; only the relevant ones
+        are exposed to the next step and the output layer.
+      </div>
+    </div>
+    <div class="hbox">
+      <strong>σ is the sigmoid function</strong> (output in [0, 1]) — it acts as a soft switch.
+      <strong>⊙ is element-wise multiplication</strong>. All gate vectors have the same dimension as the cell state.
+      The LSTM has 4× more parameters than SimpleRNN of the same size.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Inside the LSTM cell</h2>
+  <p style="font-size:0.58em; color:#8b949e; margin:0 0 0.2em 0;">Two streams: cell state c_t (long memory) and hidden state h_t (working memory). Three gates control the flow.</p>
+  <svg viewBox="0 0 680 270" style="width:100%; display:block;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="a0" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="#30363d" stroke-width="1.5" stroke-linecap="round"/>
+      </marker>
+      <marker id="af" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="#f47067" stroke-width="1.5" stroke-linecap="round"/>
+      </marker>
+      <marker id="ai" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="#56c8ba" stroke-width="1.5" stroke-linecap="round"/>
+      </marker>
+      <marker id="ao" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="#c084fc" stroke-width="1.5" stroke-linecap="round"/>
+      </marker>
+    </defs>
+
+    <!-- ── Cell state conveyor ── -->
+    <text x="14" y="42" font-family="monospace" font-size="11" fill="#8b949e" opacity="0.6">c_{t-1}</text>
+    <line x1="52" y1="38" x2="620" y2="38" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="0" opacity="0.25"/>
+    <line x1="618" y1="34" x2="638" y2="38" stroke="#8b949e" stroke-width="1" marker-end="url(#a0)" opacity="0.4"/>
+    <text x="648" y="43" font-family="monospace" font-size="11" fill="#8b949e" opacity="0.6">c_t</text>
+    <text x="340" y="26" text-anchor="middle" font-family="monospace" font-size="10" fill="#8b949e" opacity="0.3" letter-spacing="2">CELL STATE — long-term memory</text>
+
+    <!-- Multiply node at x=150 (forget × c_{t-1}) -->
+    <circle cx="150" cy="38" r="12" fill="#161b22" stroke="#8b949e" stroke-width="0.8" opacity="0.7"/>
+    <text x="150" y="43" text-anchor="middle" font-family="monospace" font-size="14" fill="#e6edf3" opacity="0.7">×</text>
+
+    <!-- Add node at x=380 (input adds to cell state) -->
+    <circle cx="380" cy="38" r="12" fill="#161b22" stroke="#8b949e" stroke-width="0.8" opacity="0.7"/>
+    <text x="380" y="43" text-anchor="middle" font-family="monospace" font-size="14" fill="#e6edf3" opacity="0.7">+</text>
+
+    <!-- Multiply node at x=560 (output × tanh(c_t)) -->
+    <circle cx="560" cy="38" r="12" fill="#161b22" stroke="#8b949e" stroke-width="0.8" opacity="0.7"/>
+    <text x="560" y="43" text-anchor="middle" font-family="monospace" font-size="14" fill="#e6edf3" opacity="0.7">×</text>
+
+    <!-- ── FORGET GATE ── -->
+    <rect x="74" y="90" width="152" height="80" rx="8" fill="#3d1212" stroke="#f47067" stroke-width="0.8"/>
+    <text x="150" y="115" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="#f47067">Forget gate  f_t</text>
+    <text x="150" y="135" text-anchor="middle" font-family="monospace" font-size="11" fill="#f47067">f_t = σ( W_f·[h, x] )</text>
+    <text x="150" y="155" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#e6edf3" opacity="0.7">0 = erase · 1 = keep</text>
+    <!-- gate → multiply node -->
+    <line x1="150" y1="90" x2="150" y2="52" stroke="#f47067" stroke-width="1" marker-end="url(#af)" opacity="0.8"/>
+
+    <!-- ── INPUT GATE ── -->
+    <rect x="264" y="90" width="232" height="80" rx="8" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.8"/>
+    <text x="380" y="115" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="#56c8ba">Input gate  i_t</text>
+    <text x="380" y="135" text-anchor="middle" font-family="monospace" font-size="11" fill="#56c8ba">i_t = σ(W_i·[h,x])</text>
+    <text x="380" y="152" text-anchor="middle" font-family="monospace" font-size="11" fill="#56c8ba">c̃_t = tanh(W_c·[h,x])</text>
+    <text x="380" y="163" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#e6edf3" opacity="0.7">writes candidate values</text>
+    <!-- gate → add node -->
+    <path d="M380 90 Q380 64 380 52" fill="none" stroke="#56c8ba" stroke-width="1" marker-end="url(#ai)" opacity="0.8"/>
+    <text x="400" y="74" font-family="monospace" font-size="10" fill="#56c8ba" opacity="0.7">i_t⊙c̃_t</text>
+
+    <!-- ── OUTPUT GATE ── -->
+    <rect x="456" y="90" width="192" height="80" rx="8" fill="#2d1a40" stroke="#c084fc" stroke-width="0.8"/>
+    <text x="552" y="115" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="#c084fc">Output gate  o_t</text>
+    <text x="552" y="135" text-anchor="middle" font-family="monospace" font-size="11" fill="#c084fc">o_t = σ(W_o·[h, x])</text>
+    <text x="552" y="152" text-anchor="middle" font-family="monospace" font-size="11" fill="#c084fc">h_t = o_t⊙tanh(c_t)</text>
+    <text x="552" y="163" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#e6edf3" opacity="0.7">exposes cell to output</text>
+    <!-- gate → multiply node -->
+    <path d="M532 90 Q532 64 555 52" fill="none" stroke="#c084fc" stroke-width="1" marker-end="url(#ao)" opacity="0.8"/>
+
+    <!-- Inputs from bottom: h_{t-1} and x_t -->
+    <rect x="60" y="208" width="72" height="32" rx="6" fill="#161b22" stroke="#30363d" stroke-width="0.7"/>
+    <text x="96" y="228" text-anchor="middle" font-family="monospace" font-size="12" fill="#8b949e">h_{t-1}</text>
+
+    <rect x="300" y="208" width="56" height="32" rx="6" fill="#161b22" stroke="#30363d" stroke-width="0.7"/>
+    <text x="328" y="228" text-anchor="middle" font-family="monospace" font-size="12" fill="#8b949e">x_t</text>
+
+    <!-- [h,x] dashed lines to each gate -->
+    <line x1="100" y1="208" x2="140" y2="172" stroke="#30363d" stroke-width="0.7" stroke-dasharray="3 3" opacity="0.6"/>
+    <line x1="100" y1="208" x2="340" y2="172" stroke="#30363d" stroke-width="0.7" stroke-dasharray="3 3" opacity="0.4"/>
+    <line x1="100" y1="208" x2="500" y2="172" stroke="#30363d" stroke-width="0.7" stroke-dasharray="3 3" opacity="0.3"/>
+    <line x1="328" y1="208" x2="340" y2="172" stroke="#30363d" stroke-width="0.7" stroke-dasharray="3 3" opacity="0.5"/>
+    <text x="196" y="196" text-anchor="middle" font-family="monospace" font-size="10" fill="#30363d" opacity="0.7">[h, x]</text>
+
+    <!-- h_t output (down from output multiply node) -->
+    <line x1="560" y1="50" x2="560" y2="240" stroke="#c084fc" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>
+    <rect x="524" y="240" width="72" height="28" rx="5" fill="#2d1a40" stroke="#c084fc" stroke-width="0.7"/>
+    <text x="560" y="258" text-anchor="middle" font-family="monospace" font-size="12" fill="#c084fc">h_t</text>
+    <text x="604" y="250" font-family="sans-serif" font-size="11" fill="#8b949e">→ next cell</text>
+    <text x="604" y="264" font-family="sans-serif" font-size="11" fill="#8b949e">→ classifier</text>
+  </svg>
+</section>
+
+
+
+
+
+<section>
+  <h2>LSTM — worked example on spam</h2>
+  <div style="font-size:0.76em;">
+    <div class="hbox" style="margin-bottom:0.5em;">
+      Trace what happens as the LSTM reads a spam message token by token.
+      This is conceptual — the actual gate values are learned from data.
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card gold" style="margin-bottom:0.5em;">
+          <div class="card-title">Input: "You have won a £1000 cash prize"</div>
+          <table style="width:100%; font-size:0.88em; border-collapse:collapse;">
+            <tr>
+              <th style="color:var(--text-dim); padding:0.2em 0.4em; border-bottom:1px solid var(--border);">Token</th>
+              <th style="color:var(--text-dim); padding:0.2em 0.4em; border-bottom:1px solid var(--border);">Likely gate activity</th>
+            </tr>
+            <tr><td style="padding:0.2em 0.4em; color:var(--text-dim);">you</td><td style="padding:0.2em 0.4em;">Weak signal — nothing written</td></tr>
+            <tr><td style="padding:0.2em 0.4em; color:var(--text-dim);">have</td><td style="padding:0.2em 0.4em;">Weak signal</td></tr>
+            <tr><td style="padding:0.2em 0.4em; color:var(--mint);">won</td><td style="padding:0.2em 0.4em;">Input gate opens — strong spam signal written to cell</td></tr>
+            <tr><td style="padding:0.2em 0.4em; color:var(--text-dim);">a</td><td style="padding:0.2em 0.4em;">Cell state preserved by forget gate ≈ 1</td></tr>
+            <tr><td style="padding:0.2em 0.4em; color:var(--mint);">£1000</td><td style="padding:0.2em 0.4em;">Input gate opens again — reinforces spam signal</td></tr>
+            <tr><td style="padding:0.2em 0.4em; color:var(--mint);">cash prize</td><td style="padding:0.2em 0.4em;">Further reinforcement</td></tr>
+          </table>
+          Final <code>h_T</code>: strong spam representation → Dense(sigmoid) → 0.97 → spam.
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">Why this is better than SimpleRNN</div>
+          The cell state <em>accumulates</em> evidence across the sequence.
+          <code>won</code>, <code>£1000</code>, <code>cash prize</code>
+          each push the cell further toward the spam direction,
+          and the forget gate keeps those signals alive until the end.<br/><br/>
+          SimpleRNN would have to pass this information through
+          the <code>tanh</code> bottleneck at every step —
+          by the time it reaches the Dense layer the signal has degraded.
+        </div>
+        <div class="card navy">
+          <div class="card-title">In Keras — one line difference</div>
+          Replace:<br/>
+          <code>SimpleRNN(units=32)</code><br/><br/>
+          With:<br/>
+          <code>LSTM(units=32)</code><br/><br/>
+          The rest of the architecture — Embedding, Dense, compile — stays identical.
+          Keras handles all the gate computations internally.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>LSTM in Keras — full classifier</h2>
+  <div style="font-size:0.76em;">
+    <div class="cols cols-6040">
+      <div>
+<pre><code class="language-python">from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import (
+    Embedding, LSTM, Dense, Dropout
+)
+from tensorflow.keras.optimizers import Adam
+
+model = Sequential([
+    Embedding(
+        input_dim=1000,
+        output_dim=16,
+        input_length=50,
+        name="embedding",
+    ),
+    LSTM(units=32, name="lstm"),
+    Dropout(0.3, name="dropout"),
+    Dense(1, activation="sigmoid",
+          name="output"),
+])
+
+model.compile(
+    loss="binary_crossentropy",
+    optimizer=Adam(learning_rate=1e-3),
+    metrics=["accuracy"],
+)
+model.summary()</code></pre>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">Parameter count — LSTM vs SimpleRNN</div>
+          With <code>embed_dim=16</code>, <code>units=32</code>:<br/><br/>
+          SimpleRNN: <code>(16+32+1)×32 = 1,568</code><br/>
+          LSTM: <code>4 × (16+32+1)×32 = 6,272</code><br/><br/>
+          4× more params — one set per gate (forget, input, output, cell candidate).
+        </div>
+        <div class="card gold">
+          <div class="card-title">Dropout after LSTM</div>
+          The LSTM has many parameters and can overfit on small datasets.
+          <code>Dropout(0.3)</code> randomly zeros 30% of the hidden state
+          during training, forcing the network to not rely on any single unit.
+          <em>Only active during training, not inference.</em>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SEC 04 KERAS PIPELINE -->
+<section class="section-slide">
+  <span class="section-num">04</span>
+  <h2>From Tokens to Sequences in Keras</h2>
+  <p style="color:var(--text-dim); font-size:0.58em;">Tokenizer · Padding · Embedding layer · Frozen GloVe</p>
+</section>
+
+<section>
+  <h2>The full Keras pipeline</h2>
+  <div style="font-size:0.76em;">
+    <div class="hbox" style="margin-bottom:0.5em;">
+      Two design choices for the Embedding layer:
+      <strong>trainable</strong> (learn from scratch) vs <strong>frozen GloVe</strong> (transfer learning).
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card" style="margin-bottom:0.5em;">
+          <div class="card-title">Option A — Trainable embedding</div>
+          Weights initialised randomly, updated during training.<br/>
+          Good when: large training set, task-specific vocabulary.<br/>
+          Used in: TP-05A (spam detection).<br/><br/>
+<pre style="margin:0;"><code class="language-python">Embedding(
+    input_dim=vocab_size,
+    output_dim=16,
+    input_length=max_len,
+    # trainable=True by default
+)</code></pre>
+        </div>
+        <div class="card gold">
+          <div class="card-title">Option B — Frozen GloVe</div>
+          Weights loaded from pre-trained GloVe, not updated.<br/>
+          Good when: small training set, general vocabulary.<br/>
+          Used in: TP-05B (emojifier).<br/><br/>
+<pre style="margin:0;"><code class="language-python">Embedding(
+    input_dim=vocab_size,
+    output_dim=50,
+    weights=[embedding_matrix],
+    trainable=False,  # frozen
+    input_length=max_len,
+)</code></pre>
+        </div>
+      </div>
+      <div>
+        <div class="card navy">
+          <div class="card-title">Building the GloVe embedding matrix</div>
+<pre style="margin:0;"><code class="language-python">def build_embedding_matrix(
+    word2idx: dict,
+    glove: dict,
+    dim: int = 50,
+) -> np.ndarray:
+    """
+    Parameters
+    ----------
+    word2idx : dict
+        word → integer index (1-based).
+    glove : dict
+        word → np.ndarray.
+    dim : int
+        GloVe dimension.
+
+    Returns
+    -------
+    np.ndarray, shape (vocab+1, dim)
+    """
+    vocab_size = len(word2idx) + 1
+    matrix = np.zeros((vocab_size, dim))
+    for word, idx in word2idx.items():
+        if word in glove:
+            matrix[idx] = glove[word]
+    return matrix</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Transfer learning — frozen vs fine-tuned</h2>
+  <div style="font-size:0.78em;">
+    <div class="hbox gold" style="margin-bottom:0.5em;">
+      <strong>Why freeze the GloVe weights on small datasets?</strong>
+      The GloVe vocabulary has 400,000 words × 50 dimensions = 20 million parameters.
+      With only 145 training sentences, trying to update all of them
+      would immediately overfit. Freezing keeps the pre-trained semantic structure intact.
+    </div>
+    <div class="cols cols-3">
+      <div class="card">
+        <div class="card-title">Large dataset</div>
+        Millions of labelled examples.<br/><br/>
+        <span style="color:var(--green);">Fine-tune</span> the embeddings.<br/>
+        The domain-specific vocabulary may be different from GloVe's training corpus.
+        Updating helps adapt.<br/><br/>
+        Example: training a sentiment model on 5M Amazon reviews.
+      </div>
+      <div class="card gold">
+        <div class="card-title">Medium dataset</div>
+        Tens of thousands of examples.<br/><br/>
+        <span style="color:var(--gold);">Fine-tune with low learning rate</span>,
+        or freeze for first N epochs then unfreeze.<br/><br/>
+        Example: TP-04 AG News (108K articles with GloVe).
+      </div>
+      <div class="card red">
+        <div class="card-title">Small dataset</div>
+        Hundreds of examples.<br/><br/>
+        <span style="color:var(--red);">Freeze</span> the embeddings.
+        Only train the LSTM + Dense layers (a few thousand parameters).<br/><br/>
+        Example: TP-05B Emojifier (145 sentences).
+      </div>
+    </div>
+    <div class="hbox" style="margin-top:0.6em;">
+      <strong>This is the core of transfer learning:</strong>
+      use representations learned on a large corpus,
+      adapt only the task-specific layers on your (smaller) target dataset.
+      You will apply this principle at a much larger scale in Session 06 with BERT.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Frozen GloVe vs trainable embedding</h2>
+  <p style="font-size:0.58em; color:#8b949e; margin:0 0 0.3em 0;">Two architecture choices. The right one depends on how much labelled data you have.</p>
+  <svg viewBox="0 0 680 260" style="width:100%; display:block;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="aft" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="#4a5568" stroke-width="1.5" stroke-linecap="round"/>
+      </marker>
+    </defs>
+
+    <!-- Column headers -->
+    <rect x="60"  y="16" width="240" height="34" rx="6" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.8"/>
+    <text x="180" y="37" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="600" fill="#56c8ba">Frozen GloVe</text>
+
+    <rect x="380" y="16" width="240" height="34" rx="6" fill="#3d2e0f" stroke="#e8c47a" stroke-width="0.8"/>
+    <text x="500" y="37" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="600" fill="#e8c47a">Trainable embedding</text>
+
+    <!-- LEFT: Frozen -->
+    <!-- Embedding layer: LOCKED -->
+    <rect x="60" y="66" width="240" height="50" rx="6" fill="#161b22" stroke="#30363d" stroke-width="0.7" opacity="0.7"/>
+    <text x="180" y="87" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#8b949e">Embedding (GloVe 50d)</text>
+    <text x="180" y="104" text-anchor="middle" font-family="monospace" font-size="11" fill="#4a5568">~20M params — FROZEN 🔒</text>
+    <!-- arrow down -->
+    <line x1="180" y1="116" x2="180" y2="132" stroke="#4a5568" stroke-width="1" marker-end="url(#aft)"/>
+    <!-- LSTM: TRAINED -->
+    <rect x="60" y="134" width="240" height="50" rx="6" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.9"/>
+    <text x="180" y="155" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#56c8ba">LSTM (32 units)</text>
+    <text x="180" y="172" text-anchor="middle" font-family="monospace" font-size="11" fill="#56c8ba">6,272 params — trained ✓</text>
+    <line x1="180" y1="184" x2="180" y2="200" stroke="#4a5568" stroke-width="1" marker-end="url(#aft)"/>
+    <!-- Dense: TRAINED -->
+    <rect x="60" y="202" width="240" height="44" rx="6" fill="#1e4a45" stroke="#56c8ba" stroke-width="0.9"/>
+    <text x="180" y="221" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#56c8ba">Dense (5 classes)</text>
+    <text x="180" y="237" text-anchor="middle" font-family="monospace" font-size="11" fill="#56c8ba">165 params — trained ✓</text>
+    <!-- Total -->
+    <text x="180" y="257" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#8b949e">~6,437 trainable / 20M total</text>
+    <!-- Use case tag -->
+    <text x="180" y="272" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#56c8ba">→ TP-05B: 145 sentences</text>
+
+    <!-- Vertical divider -->
+    <line x1="340" y1="10" x2="340" y2="270" stroke="#30363d" stroke-width="0.5" stroke-dasharray="4 4" opacity="0.5"/>
+
+    <!-- RIGHT: Trainable -->
+    <!-- Embedding: TRAINED -->
+    <rect x="380" y="66" width="240" height="50" rx="6" fill="#3d2e0f" stroke="#e8c47a" stroke-width="0.9"/>
+    <text x="500" y="87" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#e8c47a">Embedding (random 16d)</text>
+    <text x="500" y="104" text-anchor="middle" font-family="monospace" font-size="11" fill="#e8c47a">16K params — trained ✓</text>
+    <line x1="500" y1="116" x2="500" y2="132" stroke="#4a5568" stroke-width="1" marker-end="url(#aft)"/>
+    <!-- LSTM: TRAINED -->
+    <rect x="380" y="134" width="240" height="50" rx="6" fill="#3d2e0f" stroke="#e8c47a" stroke-width="0.9"/>
+    <text x="500" y="155" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#e8c47a">LSTM (32 units)</text>
+    <text x="500" y="172" text-anchor="middle" font-family="monospace" font-size="11" fill="#e8c47a">6,272 params — trained ✓</text>
+    <line x1="500" y1="184" x2="500" y2="200" stroke="#4a5568" stroke-width="1" marker-end="url(#aft)"/>
+    <!-- Dense: TRAINED -->
+    <rect x="380" y="202" width="240" height="44" rx="6" fill="#3d2e0f" stroke="#e8c47a" stroke-width="0.9"/>
+    <text x="500" y="221" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#e8c47a">Dense (2 classes)</text>
+    <text x="500" y="237" text-anchor="middle" font-family="monospace" font-size="11" fill="#e8c47a">65 params — trained ✓</text>
+    <text x="500" y="257" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#8b949e">~22,337 trainable / 22K total</text>
+    <text x="500" y="272" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#e8c47a">→ TP-05A: 293 SMS messages</text>
+  </svg>
+</section>
+
+
+
+
+
+<!-- ═══════════════════════════════════════════════════════ SEC 05 LIMITS -->
+<section class="section-slide">
+  <span class="section-num">05</span>
+  <h2>Limits and What's Next</h2>
+  <p style="color:var(--text-dim); font-size:0.58em;">Why RNNs are no longer the state of the art.</p>
+</section>
+
+<section>
+  <h2>The parallelism problem</h2>
+  <div style="font-size:0.78em;">
+    <div class="hbox red" style="margin-bottom:0.5em;">
+      <strong>Fatal limitation of RNNs:</strong> the computation at step <em>t</em> depends on the hidden state from step <em>t−1</em>.
+      Steps cannot be computed in parallel. Training on long sequences is slow.
+    </div>
+    <div class="cols cols-2">
+      <div>
+        <div class="card red" style="margin-bottom:0.5em;">
+          <div class="card-title">Sequential computation</div>
+          To compute <code>h_50</code> you must first compute
+          <code>h_1, h_2, …, h_49</code> in sequence.<br/><br/>
+          A document with 512 tokens requires 512 sequential matrix multiplications.
+          Even with batching, the GPU is underutilised —
+          it cannot parallelise across the time dimension.<br/><br/>
+          Scaling to longer contexts (1,000+ tokens) becomes very slow.
+        </div>
+        <div class="card red">
+          <div class="card-title">Long-range memory is still limited</div>
+          LSTM is much better than SimpleRNN, but still imperfect.
+          Information from 200 steps ago is diluted by 200 forget gate multiplications
+          (each slightly less than 1).<br/><br/>
+          For tasks requiring reasoning over entire documents,
+          LSTMs fall short.
+        </div>
+      </div>
+      <div>
+        <div class="card mint">
+          <div class="card-title">The Transformer solution (S06)</div>
+          Instead of processing left to right,
+          compute attention between <em>every pair</em> of tokens simultaneously.<br/><br/>
+          <code>h_i</code> attends to all other positions in one step — no sequential bottleneck.
+          Training can be fully parallelised across the sequence.<br/><br/>
+          Long-range dependencies: token 1 and token 512 are equidistant.
+          No vanishing gradient problem across the sequence direction.
+        </div>
+        <div class="hbox gold" style="margin-top:0.5em;">
+          <strong>Historical arc:</strong><br/>
+          S03: BoW — no order, no parameters<br/>
+          S04: Embeddings — semantic geometry, still no order<br/>
+          S05: RNN/LSTM — order preserved, sequential<br/>
+          S06: Transformer — order preserved, parallel, global attention<br/>
+          S07: BERT — pre-trained Transformer, fine-tuned
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The comparison table — where we are</h2>
+  <div style="font-size:0.72em;">
+    <table class="cmp-table">
+      <tr>
+        <th>Session</th>
+        <th>Model</th>
+        <th>Word order</th>
+        <th>AG News F1</th>
+        <th>Key strength</th>
+        <th>Key weakness</th>
+      </tr>
+      <tr>
+        <td>S01</td>
+        <td>Majority baseline</td>
+        <td class="bad">✗</td>
+        <td class="bad">~0.25</td>
+        <td>Trivial</td>
+        <td>Ignores the text</td>
+      </tr>
+      <tr>
+        <td>S03</td>
+        <td>Naive Bayes</td>
+        <td class="bad">✗</td>
+        <td class="good">~0.83</td>
+        <td>Fast, interpretable</td>
+        <td>Feature independence</td>
+      </tr>
+      <tr>
+        <td>S03</td>
+        <td>Logistic Regression</td>
+        <td class="bad">✗</td>
+        <td class="good">~0.89</td>
+        <td>Strong baseline</td>
+        <td>No semantics</td>
+      </tr>
+      <tr>
+        <td>S04</td>
+        <td>LR + GloVe mean pool</td>
+        <td class="bad">✗</td>
+        <td>~0.86</td>
+        <td>Dense, semantic</td>
+        <td>No word order</td>
+      </tr>
+      <tr class="highlight-row">
+        <td>S05-A</td>
+        <td>LSTM (trainable emb)</td>
+        <td class="good">✓</td>
+        <td>← TP-05A</td>
+        <td>Handles negation</td>
+        <td>Sequential, slow</td>
+      </tr>
+      <tr class="highlight-row">
+        <td>S05-B</td>
+        <td>LSTM + frozen GloVe</td>
+        <td class="good">✓</td>
+        <td>← TP-05B</td>
+        <td>Order + semantics</td>
+        <td>Sequential, slow</td>
+      </tr>
+      <tr style="opacity:0.45;">
+        <td>S06+</td>
+        <td>BERT fine-tuning</td>
+        <td class="good">✓</td>
+        <td>TBD</td>
+        <td>Parallel, contextual</td>
+        <td>Compute-heavy</td>
+      </tr>
+    </table>
+    <div class="hbox" style="margin-top:0.5em;">
+      Fill in your TP results. On AG News (topic classification), LSTM does not necessarily beat LR + TF-IDF.
+      The task is keyword-driven — word order matters less here than it does for sentiment or NLI.
+      This is the key discussion point in Part 5 of TP-05A.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ TP BRIDGE -->
+<section>
+  <h2>Today's TPs — what you will build</h2>
+  <div style="font-size:0.76em;">
+    <div class="cols cols-2">
+      <div>
+        <div class="card mint" style="margin-bottom:0.5em;">
+          <div class="card-title">TP-05A — Spam Detection</div>
+          Dataset: 293 SMS messages (ham/spam), embedded in the notebook.<br/><br/>
+          You implement:<br/>
+          <code>build_sequences</code> (Tokenizer + pad)<br/>
+          <code>build_rnn_model</code> (SimpleRNN)<br/>
+          <code>build_lstm_model</code> (LSTM + Dropout)<br/>
+          <code>plot_training_curves</code><br/><br/>
+          Bonus: Dense baseline with <code>GlobalAveragePooling1D</code> —
+          does word order actually help for spam?
+        </div>
+      </div>
+      <div>
+        <div class="card gold">
+          <div class="card-title">TP-05B — Emojifier</div>
+          Dataset: 145 sentences → 5 emoji classes (❤️ ⚽ 😂 😞 🍴).<br/>
+          GloVe 50d via gensim (cached after first download).<br/><br/>
+          You implement:<br/>
+          <code>build_vocab_and_index</code><br/>
+          <code>sentences_to_indices</code><br/>
+          <code>build_embedding_matrix</code> (from GloVe)<br/>
+          <code>build_emojifier_v1</code> (mean pool — like S04)<br/>
+          <code>build_emojifier_v2</code> (frozen GloVe + LSTM)<br/><br/>
+          Key experiment: test both models on "not feeling happy".
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:0.5em;">
+      <span class="pill pill-mint">SimpleRNN</span>
+      <span class="pill pill-gold">LSTM</span>
+      <span class="pill pill-navy">frozen GloVe</span>
+      <span class="pill pill-purple">trainable embedding</span>
+      <span class="pill pill-mint">padding</span>
+      <span class="pill pill-gold">negation test</span>
+      <span class="pill pill-red">vanishing gradient</span>
+    </div>
+  </div>
+</section>
+
+</div><!-- /slides -->
+</div><!-- /reveal -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/notes/notes.min.js"></script>
+
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    progress: true,
+    center: true,
+    transition: 'fade',
+    transitionSpeed: 'fast',
+    width: 1200,
+    height: 700,
+    margin: 0.06,
+    minScale: 0.1,
+    plugins: [ RevealHighlight, RevealNotes ]
+  });
+
+  Reveal.addEventListener('ready', function() {
+    document.querySelectorAll('.reveal .slides section').forEach(function(slide) {
+      slide.style.zoom = '1';
+    });
+  });
+</script>
+</body>
+</html>
